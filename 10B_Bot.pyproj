@@ -11,6 +11,8 @@
     <OutputPath>.</OutputPath>
     <Name>10B_Bot</Name>
     <RootNamespace>10B_Bot</RootNamespace>
+    <InterpreterId>Global|PythonCore|3.10</InterpreterId>
+    <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -31,6 +33,11 @@
   <ItemGroup>
     <Content Include="other_files\banner.gif" />
     <Content Include="other_files\image.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.10" />
+    <InterpreterReference Include="Global|PythonCore|3.9" />
+    <InterpreterReference Include="Global|VisualStudio|IronPython3.4a" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

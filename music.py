@@ -51,21 +51,20 @@ class Music(commands.Cog):
 		self.queue.pop(0)
 	
 
-
 	def init_music_room(self, guild):
 		with open('Music_rooms.txt', 'r+') as Rooms:
-			for Info in Rooms.readlines():
-				if guild.id == int(Info.split()[0]):
-					self.music_room = guild.get_channel(int(Info.split()[1]))
+			for info in Rooms.readlines():
+				if guild.id == int(info.split()[0]):
+					self.music_room = guild.get_channel(int(info.split()[1]))
 					print('inited!')
 					break
 
 
 	def update_music_rooms(self, guild):
 		with open('Music_rooms.txt', 'r+') as Rooms:
-			for Info in Rooms.readlines():
-				if guild.id == int(Info.split()[0]):
-					Rooms.seek(Rooms.tell() - len(Info) - 1)
+			for info in Rooms.readlines():
+				if guild.id == int(info.split()[0]):
+					Rooms.seek(Rooms.tell() - len(info) - 1)
 					Rooms.write(str(guild.id) + ' ' + str(self.music_room.id) + '\n')
 					print(str(guild) + '(id: ' + str(guild.id) + ') Updated Music Room!!! - new id: ' + str(self.music_room.id))
 					break
@@ -86,14 +85,17 @@ class Music(commands.Cog):
 		if len(self.client.voice_clients) == 0:
 			if not await self.client.get_command('join').__call__(ctx):
 				return None
+		# if not self.queue.is_empty and not self.is_playing and args.is_empty: #TODO play as resume
+		# 	if not await self.clien.get_command('pause').__call__(ctx):
+		# 		return None
 		url = ' '.join(args)
 		if type(ctx) == discord.Message:
 			ctx = ctx.channel
 		async with ctx.typing():
 			track_all_meta = self.define_stream_method(url)
-			track = {'source': await discord.FFmpegOpusAudio.from_probe(track_all_meta['source'], **self.FFMPEG_OPTIONS), 'meta': track_all_meta['meta']}
+			track = {'source': await discord.FFmpegOpusAudio.from_probe(track_all_meta['source'], **self.FFMPEG_OPTIONS), 'meta': track_all_meta['meta']} #FIXME ffmpeg not found
 			if track is False:
-				await ctt.send('Unexpected error', delete_after = 5)
+				await ctx.send('Unexpected error', delete_after = 5)
 			else:
 				self.queue.append(track)
 				await ctx.send('Added ' + track['meta']['title'], delete_after = 5)
@@ -108,7 +110,7 @@ class Music(commands.Cog):
 		self.play_next()
 
 	
-	""" @commands.command(name = 'pause', aliases = ['resume', 'pa', 'res'])
+	@commands.command(name = 'pause', aliases = ['resume', 'pa', 'res']) #FIXME
 	async def pause_resume(self, ctx):
 		if len(self.queue) > 0 or self.is_playing:
 			if self.is_playing:
@@ -116,7 +118,7 @@ class Music(commands.Cog):
 				self.is_playing = False
 			else:
 				self.vc.resume()
-				self.is_playing = True """
+				self.is_playing = True
 	
 
 
@@ -150,7 +152,7 @@ class Music(commands.Cog):
 		room = self.music_room
 		gif = open("other_files/banner.gif", 'rb')
 		await room.send(file = discord.File(gif, filename = 'Banner.gif'))
-		#embed_banner = discord.Embed.from_dict({'title': 'Queue is clear', 'type': 'video', 'colour': {'r': 0, 'g': 255, 'b': 0}, 'footer': {'text': 'Type the music name', 'icon_url': settings['back_image']}, 'image': {'url': settings['back_image']}})
+		#embed_banner = discord.Embed.from_dict({'title': 'Queue is clear', 'type': 'video', 'colour': {'r': 0, 'g': 255, 'b': 0}, 'footer': {'text': 'Type the music name', 'icon_url': settings['back_image']}, 'image': {'url': settings['back_image']}}) #TODO
 		embed_banner = discord.Embed(title = 'Queue is clear', type = 'video', colour = discord.Colour(0x00FF00))
 		embed_banner.set_footer(text = 'Type the music name', icon_url = settings['back_image'])
 		embed_banner.set_image( url = settings['back_image'] )
@@ -165,7 +167,7 @@ class Music(commands.Cog):
 		c = 0
 		history = await self.music_room.history(oldest_first = True).flatten()
 		for message in history:
-			if c > 1 and not message.author.bot:
+			if c > 1:
 				try:
 					await message.delete()
 				except Exception:
