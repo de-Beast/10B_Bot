@@ -8,7 +8,7 @@
             "name": "Python: Текущий файл",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "${workspaceFolder}/_10B_Bot.py",
             "console": "externalTerminal",
             "justMyCode": true
         }
