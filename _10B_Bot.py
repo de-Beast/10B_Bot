@@ -17,9 +17,9 @@ async def voice(ctx):
 	print('i am Bot')
 
 
-@client.after_invoke
+""" @client.after_invoke
 async def lol(ctx):
-	print('lol')
+	print('lol') """
 
 @client.event
 async def on_ready():

@@ -5,7 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Текущий файл",
+            "name": "Начать отладку: Интегрированный Терминал",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/_10B_Bot.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Начать отладку: Внешний Терминал",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/_10B_Bot.py",
