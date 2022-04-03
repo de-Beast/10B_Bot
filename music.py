@@ -3,17 +3,24 @@ from discord.ext import tasks, commands
 import youtube_dl
 from config import settings
 
+MUSIC_ROOMS_IDS = 'Music_rooms.txt'
 
 class Music(commands.Cog):
 	def __init__(self, client):
 		self.client = client
-		self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_at_eof 1 -reconnect_on_network_error 1 -reconnect_on_http_error 1 -reconnect_delay_max 2', 'options': '-vn'}
+		self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_at_eof 1 -reconnect_on_network_error 1 -reconnect_on_http_error 1 -reconnect_delay_max 2',
+								'options': '-vn'}
 		self.YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'} #Сделать работу с плейлистами (вроде изи)
-		self.is_playing = False
-		self.is_looping = False
-		self.queue = []
 		self.music_room = None
 		self.vc = None
+		self.queue = []
+
+		self.has_track = False
+		self.is_playing = False
+
+		self.is_looping = False
+		self.is_looping_one = False
+		self.is_secret_shaffling = False
 
 
 	def define_stream_method(self, item: str):
@@ -36,32 +43,49 @@ class Music(commands.Cog):
 
 	def play_next(self):
 		if len(self.queue) > 0:
-			self.is_playing = True
 			track = self.queue[0]['source']
+			self.has_track = True
+			self.is_playing = True
 			self.update_queue()
 			self.vc.play(track, after = lambda a: self.play_next())
 		else:
 			self.vc.stop()
 			self.is_playing = False
+			self.has_track = False
 
 
 	def update_queue(self):
 		if self.is_looping:
 			self.queue.append(self.queue[0])
-		self.queue.pop(0)
+		if not self.is_looping_one:
+			self.queue.pop(0)
 	
 
 	def init_music_room(self, guild):
-		with open('Music_rooms.txt', 'r+') as Rooms:
-			for info in Rooms.readlines():
-				if guild.id == int(info.split()[0]):
-					self.music_room = guild.get_channel(int(info.split()[1]))
-					print('inited!')
-					break
+		room_id = self.check_rooms_ids(guild)
+		if type(room_id) == int:
+			self.music_room = guild.get_channel(room_id)
+			return False
+		return True
+
+
+	def check_rooms_ids(self, guild):
+			room_id = None
+			with open(MUSIC_ROOMS_IDS, 'r+') as Rooms:
+				for info in Rooms.readlines():
+					if guild.id == int(info.split()[0]):
+						room_id = int(info.split()[1])
+						break
+				if room_id is None:
+					return False
+			for channel in guild.text_channels:
+				if channel.id == room_id:
+					return room_id
+			return False
 
 
 	def update_music_rooms(self, guild):
-		with open('Music_rooms.txt', 'r+') as Rooms:
+		with open(MUSIC_ROOMS_IDS, 'r+') as Rooms:
 			for info in Rooms.readlines():
 				if guild.id == int(info.split()[0]):
 					Rooms.seek(Rooms.tell() - len(info) - 1)
@@ -72,47 +96,115 @@ class Music(commands.Cog):
 				print(str(guild) + ' (id: ' + str(guild.id) + ') Updated Music Room!!! - new id: ' + str(self.music_room.id))
 
 
+	async def add_reactions(self, message: discord.Message):
+		await message.add_reaction('⏯️')	#paly / pause
+		await message.add_reaction('⏭️')	#next
+		await message.add_reaction('⏮️')	#prev
+		await message.add_reaction('🔁')	#loop
+		await message.add_reaction('🔂')	#loop one
+		await message.add_reaction('🔀')	#shuffle
+		await message.add_reaction('🔣')	#secret shuffle
+		await message.add_reaction('⏹️')	#clear list
+
+
+	async def play_pause_reaction(self):
+		if self.is_playing:
+			ctx = await self.client.get_context(await self.music_room.send('Paused'))
+		else:
+			ctx = await self.client.get_context(await self.music_room.send('Resumed'))
+		await ctx.invoke(self.client.get_command('pause_resume'))
+
+
+	async def skip_reaction(self):
+		ctx = await self.client.get_context(await self.music_room.send('Skiped'))
+		await ctx.invoke(self.client.get_command('skip'))
+
+
+	async def prev_track_reaction(self):
+		pass
+
+
+	async def loop_reaction(self):
+		pass
+
+
+	async def loop_one_reaction(self):
+		pass
+
+
+	async def shuffle_reaction(self):
+		pass
+
+
+	async def secret_shuffle_reaction(self):
+		pass
+
+
+	async def stop_reaction(self):
+		pass
+
+
+
 ############################## Checks ###################################
 
 
 
 ############################## Commands #################################
 	
+
+					####### Music Commands #######
 	# GROUP - PLAY
 	@commands.group(name = 'play', aliases = ['p', 'add', 'paly'])
 	@commands.cooldown(1, 3, commands.BucketType.default)
 	async def play(self, ctx, *args):
-		if len(self.client.voice_clients) == 0:
-			if not await self.client.get_command('join').__call__(ctx):
-				return None
-		# if not self.queue.is_empty and not self.is_playing and args.is_empty: #TODO play as resume
-		# 	if not await self.clien.get_command('pause').__call__(ctx):
-		# 		return None
-		url = ' '.join(args)
-		if type(ctx) == discord.Message:
-			ctx = ctx.channel
-		async with ctx.typing():
-			track_all_meta = self.define_stream_method(url)
-			track = {'source': await discord.FFmpegOpusAudio.from_probe(track_all_meta['source'], **self.FFMPEG_OPTIONS), 'meta': track_all_meta['meta']} #FIXME ffmpeg not found
-			if track is False:
+		if len(self.client.voice_clients) == 0 and not await ctx.invoke(self.client.get_command('join')):
+			await ctx.send('Bruh... Something went wrong')
+			return None
+		if self.has_track and not bool(args):
+			await ctx.invoke(self.client.get_command('pause'))
+			return None
+		music_name = ' '.join(args)
+		async with ctx.channel.typing():
+			track_all_meta = self.define_stream_method(music_name)
+			track = {'source': await discord.FFmpegOpusAudio.from_probe(track_all_meta['source'], **self.FFMPEG_OPTIONS), 'meta': track_all_meta['meta']}
+			if not bool(track):
 				await ctx.send('Unexpected error', delete_after = 5)
 			else:
 				self.queue.append(track)
 				await ctx.send('Added ' + track['meta']['title'], delete_after = 5)
 				print(*self.queue)
-			if not self.is_playing:
+			if not self.has_track:
 				self.play_next()
 
 
 	@commands.command(name = 'skip', aliases = ['s'])
 	async def skip(self, ctx):
 		self.vc.pause()
+		self.is_playing = False
 		self.play_next()
 
+
+	@commands.command(name = 'stop')
+	async def stop(self, ctx):
+		self.vc.stop()
+		self.is_playing = False
+		self.has_track = False
+		self.queue = []
+
+
+	@commands.command(name = 'loop', aliases = ['l'])
+	async def loop(self, ctx):
+		self.is_looping = not self.is_looping
+
+
+	@commands.command(name = 'loop_one', aliases = ['lo', 'lone'])
+	async def loop_one(self, ctx):
+		self.is_looping_one = not self.is_looping_one
+
 	
-	@commands.command(name = 'pause', aliases = ['resume', 'pa', 'res']) #FIXME
+	@commands.command(name = 'pause_resume', aliases = ['pause', 'pa', 'pas', 'resume', 'res', 're', 'toggle', 'tog'])
 	async def pause_resume(self, ctx):
-		if len(self.queue) > 0 or self.is_playing:
+		if self.has_track:
 			if self.is_playing:
 				self.vc.pause()
 				self.is_playing = False
@@ -120,7 +212,6 @@ class Music(commands.Cog):
 				self.vc.resume()
 				self.is_playing = True
 	
-
 
 	@commands.command(name = 'join', aliases = ['j'], delete_after = 5)
 	async def join(self, ctx):
@@ -132,14 +223,20 @@ class Music(commands.Cog):
 			return True
 
 
-	@commands.command(aliases = ['dis', 'd'])
+	@commands.command(name = 'disconnect', aliases = ['dis', 'd'])
 	async def disconnect(self, ctx):
 		await ctx.voice_client.disconnect()
 		self.vc = None
 		self.is_playing = False
+		self.has_track = False
 
 	
-	@commands.command(name = 'create_music_room', aliases = ['make_room', 'create_room', 'make_music_room'])	
+
+					####### Room Commands #######
+
+
+
+	@commands.command(name = 'create_music_room', aliases = ['create', 'make_room', 'create_room', 'make_music_room'])	
 	@commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator = True))
 	async def create_music_room(self, ctx):
 		if self.music_room is not None:
@@ -152,11 +249,12 @@ class Music(commands.Cog):
 		room = self.music_room
 		gif = open("other_files/banner.gif", 'rb')
 		await room.send(file = discord.File(gif, filename = 'Banner.gif'))
-		#embed_banner = discord.Embed.from_dict({'title': 'Queue is clear', 'type': 'video', 'colour': {'r': 0, 'g': 255, 'b': 0}, 'footer': {'text': 'Type the music name', 'icon_url': settings['back_image']}, 'image': {'url': settings['back_image']}}) #TODO
+		#TODO #embed_banner = discord.Embed.from_dict({'title': 'Queue is clear', 'type': 'video', 'colour': {'r': 0, 'g': 255, 'b': 0}, 'footer': {'text': 'Type the music name', 'icon_url': settings['back_image']}, 'image': {'url': settings['back_image']}})
 		embed_banner = discord.Embed(title = 'Queue is clear', type = 'video', colour = discord.Colour(0x00FF00))
 		embed_banner.set_footer(text = 'Type the music name', icon_url = settings['back_image'])
 		embed_banner.set_image( url = settings['back_image'] )
-		await room.send(embed = embed_banner)
+		message = await room.send(embed = embed_banner)
+		await self.add_reactions(message)
 		await room.send('Channel Created', delete_after = 5)
 
 
@@ -173,7 +271,12 @@ class Music(commands.Cog):
 				except Exception:
 					print('Message not Found')
 			c += 1
-	
+
+############################## Reactions #################################
+
+
+
+
 
 ############################## Listeners #################################
 
@@ -186,14 +289,15 @@ class Music(commands.Cog):
 
 	@commands.Cog.listener()
 	async def on_guild_join(self, ctx):
-		await self.client.get_command('create_music_room').__call__(ctx)
+		await ctx.invoke(self.client.get_command('create_music_room'))
 
 	
 	@commands.Cog.listener('on_message')
 	async def play_music_on_message(self, message):
 		if not message.author.bot:
 			if message.channel == self.music_room and not message.content.startswith(settings['prefix'], 0, len(settings['prefix'])):
-				await self.client.get_command('play').__call__(message, message.content)
+				ctx = await self.client.get_context(message)
+				await ctx.invoke(self.client.get_command('play'), message.content)
 
 
 	@commands.Cog.listener('on_message')
@@ -202,11 +306,37 @@ class Music(commands.Cog):
 			await self.clear_room(message)
 
 
-
 	@commands.Cog.listener('on_message')
 	async def set_music_room_on_message(self, message):
 		if self.music_room == None:
-			self.init_music_room(message.guild)
+			if self.init_music_room(message.guild):
+				ctx = await self.client.get_context(message)
+				await ctx.invoke(self.client.get_command('create_music_room'))
+
+
+	@commands.Cog.listener('on_reaction_add')
+	async def pressed_reaction(self, reaction, user):
+		if reaction.emoji == "⏯️":
+			pass
+		if reaction.emoji == "⏭️":
+			pass
+		if reaction.emoji == "⏮️":
+			pass
+		if reaction.emoji == "🔁":
+			pass
+		if reaction.emoji == "🔂":
+			pass
+		if reaction.emoji == "🔀":
+			pass
+		if reaction.emoji == "🔣":
+			pass
+		if reaction.emoji == "⏹️":
+			pass
+
+
+
+
+
 
 
 def setup(client):
