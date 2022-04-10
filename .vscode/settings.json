@@ -8,5 +8,7 @@
     "python.autoComplete.extraPaths": [
     
     ],
-    "python.analysis.extraPaths": []
+    "python.analysis.extraPaths": [],
+    "diffEditor.codeLens": true,
+    "editor.suggest.showStatusBar": true,
 }
