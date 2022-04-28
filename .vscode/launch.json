@@ -8,7 +8,7 @@
             "name": "Начать отладку: Интегрированный Терминал",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/_10B_Bot.py",
+            "program": "${workspaceFolder}/Main.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -16,7 +16,7 @@
             "name": "Начать отладку: Внешний Терминал",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/_10B_Bot.py",
+            "program": "${workspaceFolder}/Main.py",
             "console": "externalTerminal",
             "justMyCode": true
         }
