@@ -82,16 +82,16 @@ def define_stream_method(item: str, search_platform = 'Youtube')->list:
 		vk_list = fullmatch(r'https?://(?:www\.)?vk\.com/audios\d+\?z=audio_playlist(-?\d+)_(\d+).+', item)
 	if yt:
 		return [search_yt_single(yt[0])]
-	elif yt_list:
+	if yt_list:
 		return search_yt_list(yt_list[0])
-	elif vk:
+	if vk:
 		return [get_vk_single(vk[1])]
-	elif vk_list:
+	if vk_list:
 		key = vk_list[3] if len(vk_list.groups()) > 2 else None
 		return get_vk_album(vk_list[1], vk_list[2], key)
-	elif search_platform == 'Youtube':
+	if search_platform == 'Youtube':
 		return [search_yt_single("ytsearch:" + item)]
-	elif search_platform == 'VK':
+	if search_platform == 'VK':
 		return [get_vk_single(search_vk(item))]
 
 
@@ -113,9 +113,8 @@ class Music(commands.Cog):
 			if ctx.author.voice is None:
 				await ctx.send('You are not in the voice channel', delete_after=3)
 				return False
-			else:
-				await ctx.author.voice.channel.connect(reconnect = True, cls = Player)
-				return True
+			await ctx.author.voice.channel.connect(reconnect = True, cls = Player)
+			return True
 
 
 ############################## Checks ###################################
@@ -139,7 +138,7 @@ class Music(commands.Cog):
 		if player.has_track() and not args:
 			await ctx.invoke(self.client.get_command('pause_resume'))
 			return
-		elif not args:
+		if not args:
 			return
 		music_name = ' '.join(args)
 		async with ctx.channel.typing():
@@ -206,7 +205,7 @@ class Music(commands.Cog):
 	async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
 		if isinstance(error, commands.CommandNotFound):
 			return
-		elif isinstance(error, commands.MissingRequiredArgument):
+		if isinstance(error, commands.MissingRequiredArgument):
 			await ctx.send('You are missing some arguments')
 		elif isinstance(error, commands.BadArgument):
 			await ctx.send('You are using bad arguments')
@@ -221,8 +220,7 @@ class Music(commands.Cog):
 	async def disconnect(self, ctx: commands.Context):
 		if ctx.voice_client is None:
 			return
-		else:
-			await ctx.voice_client.disconnect()
+		await ctx.voice_client.disconnect()
 
 
 
