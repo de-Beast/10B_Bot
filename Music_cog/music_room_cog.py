@@ -197,7 +197,7 @@ class MusicRoom(commands.Cog):
     async def check_music_rooms_in_guilds(self):
         await update_music_rooms_db(self.client.guilds)
         for guild in self.client.guilds:
-            if (get_music_room(guild) == None) and check_threads(guild):
+            if (get_music_room(guild) is None) and check_threads(guild):
                 await self.create_music_room(guild)
             try:
                 await self.update_main_view(guild)
