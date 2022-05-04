@@ -131,9 +131,8 @@ class Music(commands.Cog):
 	@commands.command(name = 'play', aliases = ['p', 'add', 'paly'])
 	@commands.cooldown(1, 3, commands.BucketType.default)
 	async def play(self, ctx: commands.Context, *args):
-		if ctx.voice_client is None:
-			if not await self.join(ctx):
-				return
+		if ctx.voice_client is None and not await self.join(ctx):
+			return
 		player: Player = ctx.voice_client
 		if player.has_track() and not args:
 			await ctx.invoke(self.client.get_command('pause_resume'))

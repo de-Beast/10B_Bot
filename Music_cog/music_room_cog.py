@@ -181,10 +181,13 @@ class MusicRoom(commands.Cog):
 
     @commands.Cog.listener('on_message')
     async def play_music_on_message(self, message: discord.Message):
-        if not message.author.bot:
-            if message.channel == get_music_room(message.guild) and not message.content.startswith(settings['prefix'], 0, len(settings['prefix'])):
-                ctx = await self.client.get_context(message)
-                await ctx.invoke(self.client.get_command('play'), message.content)    
+        if (
+            not message.author.bot
+            and message.channel == get_music_room(message.guild)
+            and not message.content.startswith(settings['prefix'], 0, len(settings['prefix']))
+        ):
+            ctx = await self.client.get_context(message)
+            await ctx.invoke(self.client.get_command('play'), message.content)    
 
 
     @commands.Cog.listener('on_message')
