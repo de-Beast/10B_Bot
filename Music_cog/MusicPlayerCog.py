@@ -4,18 +4,19 @@ from re import fullmatch
 from threading import Thread
 from time import sleep
 
-import discord
 import youtube_dl
 from discord.ext import commands
 from vk_api import get_api
 
 from .player.Player import Loop, Player
 
-MUSIC_ROOMS_IDS = 'Music_rooms.txt'
-YDL_OPTIONS = {
-			'format': 'bestaudio',
-			'noplaylist': 'False'}
-
+YDL_OPTIONS = {'format': 'bestaudio/best',
+               'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+               'extractaudio': True,
+			   'noplaylist': False,
+      		   'writethumbnails': True,
+           	   'source_address': '0.0.0.0'
+               }
 
 
 def search_yt_single(search_method: str):
@@ -25,7 +26,12 @@ def search_yt_single(search_method: str):
 			info = ydl.extract_info(search_method, download = False)['entries'][0]
 		except Exception:
 			info = ydl.extract_info(search_method, download = False)
-	return {'source': info['formats'][0]['url'], 'meta': {'title': info['title']}}
+	return {'source': info['formats'][0]['url'],
+			'meta': {'title': info['title'],
+            		'author': info['uploader'],
+					'thumbnail': info['thumbnails'][-1]}, 
+			'track_url': info['webpage_url'],
+   			'author_url': info['uploader_url']}
 
 
 def search_yt_list(search_method: str):
@@ -35,9 +41,13 @@ def search_yt_list(search_method: str):
 			infos = ydl.extract_info(search_method, download = False)['entries']
 		except Exception:
 			info = ydl.extract_info(search_method, download = False)
-	print(infos)
 	for info in infos:
-		yield {'source': info['formats'][0]['url'], 'meta': {'title': info['title']}}
+		yield {'source': info['formats'][0]['url'],
+         		'meta': {'title': info['title'],
+             			'author': info['uploader'],
+						'thumbnail': info['thumbnails'][-1]},
+           		'track_url': info['webpage_url'],
+             	'author_url': info['uploader_url']}
 
 
 def get_vk_album(owner_id: int, id: int, key):
@@ -90,7 +100,7 @@ def define_stream_method(item: str, search_platform = 'Youtube')->list:
 		key = vk_list[3] if len(vk_list.groups()) > 2 else None
 		return get_vk_album(vk_list[1], vk_list[2], key)
 	elif search_platform == 'Youtube':
-		return [search_yt_single("ytsearch:" + item)]
+		return [search_yt_single('ytsearch:' + item)]
 	elif search_platform == 'VK':
 		return [get_vk_single(search_vk(item))]
 
@@ -99,7 +109,7 @@ def define_stream_method(item: str, search_platform = 'Youtube')->list:
 ############################# MUSIC COG #################################
 
 
-class Music(commands.Cog):
+class MusicPlayerCog(commands.Cog):
 	def __init__(self, client: commands.Bot):
 		self.client: commands.Bot = client
 		self.search_platform = 'Youtube'
@@ -127,7 +137,6 @@ class Music(commands.Cog):
 ############################## Commands #################################
 	
 
-
 	# GROUP - PLAY
 	@commands.command(name = 'play', aliases = ['p', 'add', 'paly'])
 	@commands.cooldown(1, 3, commands.BucketType.default)
@@ -147,7 +156,7 @@ class Music(commands.Cog):
 			# if list(tracks_all_meta) == [None]:
 			# 	await ctx.send('Bruh... Something went wrong')
 			# 	return None
-			Thread(target = asyncio.run, args=[player.add_tracks_to_queue(ctx, tracks_all_meta)]).start()
+			Thread(target = asyncio.run, args=[player.add_tracks_to_queue(tracks_all_meta)]).start()
 
 
 	@commands.command(name = 'pause_resume', aliases = ['pause', 'pa', 'pas', 'resume', 'res', 're', 'toggle', 'tog'])
@@ -227,4 +236,4 @@ class Music(commands.Cog):
 
 
 def setup(client: commands.Bot):
-	client.add_cog(Music(client))
+	client.add_cog(MusicPlayerCog(client))

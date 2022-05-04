@@ -3,6 +3,7 @@ from time import sleep
 
 import discord
 from discord.ext import commands
+from .Track import Track
 
 Loop = Enum('Loop', 'NOLOOP LOOP ONE', start = 0)
 
@@ -11,16 +12,6 @@ class Player(discord.VoiceClient):
     def __init__(self, client: commands.Bot, channel: discord.TextChannel):
         super().__init__(client, channel)
         
-        self.FFMPEG_OPTIONS = {
-			'before_options': ' \
-				-reconnect 1 \
-				-reconnect_streamed 1 \
-				-reconnect_at_eof 1 \
-				-reconnect_on_network_error 1 \
-				-reconnect_on_http_error 1 \
-				-reconnect_delay_max 2',
-			'options': '-vn'
-		}
         
         self.queue = []
         self.looping = Loop.NOLOOP
@@ -33,23 +24,26 @@ class Player(discord.VoiceClient):
 
     def play_next(self):
         if len(self.queue) > 0:
-            track = self.queue[0]['source']
-            self.play(track, after = lambda a: self.update_queue())
+            track: Track = self.queue[0]
+            self.play(track.src, after = lambda a: self.update_queue())
             self.pause()
             sleep(1)
             self.resume()
+            self.update_info(track)
+            
 
 
-    def update_queue(self):
+    async def update_queue(self):
         if self.looping == Loop.NOLOOP:
             self.queue.pop(0)
+
         elif self.looping == Loop.LOOP:
-            self.queue[0]['source'].cleanup()
+            self.queue[0].src.cleanup()
             self.queue.append(self.queue[0])
             self.queue.pop(0)
         elif self.looping == Loop.ONE:
             self.stop()
-            self.queue[0]['source'].cleanup()
+            self.queue[0].src.cleanup()
         self.play_next()
         
         
@@ -75,18 +69,22 @@ class Player(discord.VoiceClient):
         # self.update_queue()
 
 
-    async def add_tracks_to_queue(self, ctx, tracks_all_meta: list):
+    def update_info(self, track: Track):
+        room_cog = self.client.get_cog('MusicRoomCog')
+        room_cog.update_info.start(self.guild, track)
+
+
+    async def add_tracks_to_queue(self, tracks_all_meta: list):
         for track_all_meta in tracks_all_meta:
             if not track_all_meta:
                 continue
-            source = await discord.FFmpegOpusAudio.from_probe(track_all_meta['source'], **self.FFMPEG_OPTIONS)
-            track = {
-                'source': source,
-                'meta': track_all_meta['meta']
-            }
-            if source:
+            track = None
+            track = await Track.from_dict(track_all_meta)
+            if track:
                 self.queue.append(track)
-                print(*self.queue)
+                for track in self.queue:
+                    print(track.title, end='\t')
+                print()
             if not self.has_track():
                 self.play_next()
             sleep(0.75)

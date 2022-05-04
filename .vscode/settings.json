@@ -11,4 +11,5 @@
     "python.analysis.extraPaths": [],
     "diffEditor.codeLens": true,
     "editor.suggest.showStatusBar": true,
+    "todo-tree.tree.showBadges": false,
 }
