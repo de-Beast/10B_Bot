@@ -10,7 +10,7 @@ class Player(discord.VoiceClient):
     # TODO: Сделать работу с плейлистами (вроде изи)
     def __init__(self, client: commands.Bot, channel: discord.TextChannel):
         super().__init__(client, channel)
-        
+
         self.FFMPEG_OPTIONS = {
 			'before_options': ' \
 				-reconnect 1 \
@@ -21,7 +21,7 @@ class Player(discord.VoiceClient):
 				-reconnect_delay_max 2',
 			'options': '-vn'
 		}
-        
+
         self.queue = []
         self.looping = Loop.NOLOOP
         self.is_secret_shaffling = False
@@ -51,23 +51,23 @@ class Player(discord.VoiceClient):
             self.stop()
             self.queue[0]['source'].cleanup()
         self.play_next()
-        
-        
+
+
     def set_loop(self, loop_type: Loop):
         self.looping = loop_type
-                
-              
+
+
     def stop(self):
         self.queue.clear()
         super().stop()
-        
+
     def toggle(self):
         if self.is_playing():
             self.pause()
         elif self.is_paused():
             self.resume()
-        
-        
+
+
     def skip(self):
         if self.is_playing():
             super().stop()

@@ -18,8 +18,8 @@ def update_music_rooms_ids():
         data = json.load(f)
         for info in data:
             MUSIC_ROOMS_DICTS.append(info)
-        
-        
+
+
 def add_music_room_in_db(music_room: discord.TextChannel, threads: list):
     guild: discord.Guild = music_room.guild
     data = json.load(open(MUSIC_ROOMS_FILE_JSON, 'r'))
@@ -43,8 +43,8 @@ def add_music_room_in_db(music_room: discord.TextChannel, threads: list):
         json.dump(data, f, indent = 3)
         print(str(guild) + ' (id: ', guild.id, ') Updated Music Room!!! - new id: ', music_room.id, sep = '')
     update_music_rooms_ids()
-        
-        
+
+
 async def update_music_rooms_db(guilds: list[discord.Guild]):
     update_music_rooms_ids()
     rooms = []
@@ -56,8 +56,8 @@ async def update_music_rooms_db(guilds: list[discord.Guild]):
     json.dump(rooms, f, indent = 3)
     f.close()
     update_music_rooms_ids()
-    
-    
+
+
 def get_music_room(guild: discord.Guild) -> discord.TextChannel:
     for info in MUSIC_ROOMS_DICTS:
         if guild.id == info['guild_id']:
@@ -72,8 +72,8 @@ def get_thread(guild: discord.Guild, thread_type: str) -> discord.Thread:
             return guild.get_thread(info['threads'][thread_type])
     print('NO CHANNEL FOR U')
     return None
-    
-    
+
+
 def check_threads(guild: discord.Guild) -> bool:
     for info in MUSIC_ROOMS_DICTS:
         if guild.id == info['guild_id']:
@@ -81,39 +81,39 @@ def check_threads(guild: discord.Guild) -> bool:
                 if thread.id not in list(info['threads'].values()):
                     return False
     return True
-    
-    
+
+
 async def get_main_message(guild: discord.Guild) -> discord.Message:
     try:
         return (await get_music_room(guild).history(limit=2, oldest_first = True).flatten())[1]
     except Exception:
         print('NO MAIN MESSAGE FOR U')
         return None
-        
-        
+
+
 async def get_thread_message(guild: discord.Guild, thread_type: str) -> discord.Message:
     try:
         return (await get_thread(guild, thread_type).history(limit=1, oldest_first = True).flatten())[0]
     except Exception:
         print('NO THREAD MESSAGE FOR U')
         return None
-        
-        
+
+
 class MusicRoom(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
 
-    
+
     async def update_main_view(self, guild: discord.Guild):
         await (await get_main_message(guild)).edit(view = MainView(self.client))
-        
-        
+
+
     async def update_threads_views(self, guild: discord.Guild):
         threads = ['settings_id', 'queue_id']
         for thread in threads:
             await (await get_thread_message(guild, thread)).edit(view = SettingsView(self.client))
-            
-            
+
+
     async def create_threads(self, room: discord.TextChannel, guild: discord.Guild) -> list:
         threads = [('settings_id', 'Settings'),
                    ('queue_id', 'Queue')]
@@ -163,30 +163,30 @@ class MusicRoom(commands.Cog):
                     print('Deleting messages error')
         except Exception:
             print('Unknown Channel')
-    
-    
+
+
     ############ Listeners ############
-    
-    
+
+
 
     @commands.Cog.listener('on_guild_join')
     async def on_guild_join(self, guild: discord.Guild):
         await self.create_music_room(guild)
-        
-        
+
+
     @commands.Cog.listener('on_guild_remove')
     async def on_guild_remove(self, guild: discord.Guild):
         await update_music_rooms_db(self.client.guilds)    
-        
-       
+
+
     @commands.Cog.listener('on_message')
     async def play_music_on_message(self, message: discord.Message):
         if not message.author.bot:
             if message.channel == get_music_room(message.guild) and not message.content.startswith(settings['prefix'], 0, len(settings['prefix'])):
                 ctx = await self.client.get_context(message)
                 await ctx.invoke(self.client.get_command('play'), message.content)    
-        
-        
+
+
     @commands.Cog.listener('on_message')
     async def clear_music_room(self, message: discord.Message):
         if message.channel == get_music_room(message.guild) and not message.author.bot:
