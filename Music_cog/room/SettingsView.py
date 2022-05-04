@@ -7,8 +7,8 @@ class SettingsView(ui.View):
     def __init__(self, client: commands.Bot):
             super().__init__(timeout = None)
             self.client: commands.Bot = client
-            
-            
+
+
     @ui.select(row = 1, options = [
             discord.SelectOption( 	#Youtube
                 label = 'Youtube',
