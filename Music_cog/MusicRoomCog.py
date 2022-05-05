@@ -31,7 +31,7 @@ def create_music_room_info(guild: discord.Guild, music_room: discord.TextChannel
         
 async def update_music_rooms_db(client: commands.Bot, rooms: list = None):
     update_music_rooms_dicts()
-    if rooms == None:
+    if rooms is None:
         rooms = []
     guilds = client.guilds
     for guild in guilds:
@@ -65,7 +65,7 @@ def check_room_correctness(guild: discord.Guild) -> dict | bool:
     for info in MUSIC_ROOMS_DICTS:
         if guild.id == info['guild_id']:
             room = guild.get_channel(info['room_id'])
-            if room == None: return False
+            if room is None: return False
             
             threads_ids = list(info['threads'].values())
             if threads_ids == []: return False
