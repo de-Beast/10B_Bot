@@ -140,7 +140,7 @@ class MusicPlayerCog(commands.Cog):
 	@commands.command(name = 'play', aliases = ['p', 'add', 'paly'])
 	@commands.cooldown(1, 3, commands.BucketType.default)
 	async def play(self, ctx: commands.Context, *args):
-		if ctx.voice_client == None:
+		if ctx.voice_client is None:
 			if not await self.join(ctx):
 				return
 		player: Player = ctx.voice_client
@@ -227,7 +227,7 @@ class MusicPlayerCog(commands.Cog):
 
 	@commands.Cog.listener('on_disconnect')
 	async def disconnect(self, ctx: commands.Context):
-		if ctx.voice_client == None:
+		if ctx.voice_client is None:
 			return
 		await ctx.voice_client.disconnect()
 
