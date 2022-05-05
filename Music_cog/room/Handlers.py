@@ -7,16 +7,16 @@ from .Views import MainView, SettingsView
 class MessageHandler():
     def __init__(self, message: discord.Message):
         self.message: discord.Message = message
-    
-    
+
+
     @classmethod
     def create_main_view(cls, client: commands.Bot):    
         return MainView(client)
-    
-    
-    
-    
-    
+
+
+
+
+
     @classmethod
     def create_embed(cls, settings: dict = None) -> discord.Embed:
         if not settings:
@@ -27,17 +27,17 @@ class MessageHandler():
                                    'icon_url': conf['back_image']},
                         'image': {'url': conf['back_image']}
                         }
-        
+
         embed = discord.Embed.from_dict(settings)
         return embed
-    
-    
+
+
     @classmethod
     def create_file(cls, path: str = 'Music_cog/room/other_files/banner.gif',
                     name: str = 'Banner.gif') -> discord.File:
         return discord.File(open(path, 'rb'), filename = name)
-    
-    
+
+
     async def update_embed(self, track):
         settings = {'title': track.title,
                     'type': 'video',
@@ -51,14 +51,14 @@ class MessageHandler():
                     }
         new_embed = self.create_embed(settings)
         await self.message.edit(embed = new_embed)
-        
-        
-        
+
+
+
 class ThreadHandler():
     def __init__(self, thread: discord.Thread):
         self.thread: discord.Thread = thread
-        
-        
+
+
     @classmethod
     def create_settings_view(cls, client: commands.Bot):
         return SettingsView(client)

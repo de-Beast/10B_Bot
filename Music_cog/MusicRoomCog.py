@@ -16,8 +16,8 @@ def update_music_rooms_dicts():
         data = json.load(f)
         for info in data:
             MUSIC_ROOMS_DICTS.append(info)
-        
-        
+
+
 def create_music_room_info(guild: discord.Guild, music_room: discord.TextChannel, threads: list):
     info = {}
     info['guild_id'] = guild.id
@@ -27,8 +27,8 @@ def create_music_room_info(guild: discord.Guild, music_room: discord.TextChannel
         info['threads'][thread[0]] = thread[1]
     print(str(guild) + ' (id: ', guild.id, ') Updated Music Room!!! - new id: ', music_room.id, sep = '')
     return info
-            
-        
+
+
 async def update_music_rooms_db(client: commands.Bot, rooms: list = None):
     update_music_rooms_dicts()
     if rooms == None:
@@ -43,8 +43,8 @@ async def update_music_rooms_db(client: commands.Bot, rooms: list = None):
     json.dump(rooms, f, indent = 3)
     f.close()
     update_music_rooms_dicts()
-    
-    
+
+
 def get_music_room(guild: discord.Guild) -> discord.TextChannel:
     for info in MUSIC_ROOMS_DICTS:
         if guild.id == info['guild_id']:
@@ -59,23 +59,23 @@ def get_thread(guild: discord.Guild, thread_type: str) -> discord.Thread:
             return guild.get_thread(info['threads'][thread_type])
     print('NO THREAD FOR U')
     return None
-    
-    
+
+
 def check_room_correctness(guild: discord.Guild) -> dict | bool:
     for info in MUSIC_ROOMS_DICTS:
         if guild.id == info['guild_id']:
             room = guild.get_channel(info['room_id'])
             if room == None: return False
-            
+
             threads_ids = list(info['threads'].values())
             if threads_ids == []: return False
             for thread in room.threads:
                 if thread.id not in threads_ids: return False
-    
+
             return info
     return False
-    
-   
+
+
 async def create_music_room(client: commands.Bot, guild: discord.Guild):
     if get_music_room(guild):
         await get_music_room(guild).delete()
@@ -86,8 +86,8 @@ async def create_music_room(client: commands.Bot, guild: discord.Guild):
                     view = MessageHandler.create_main_view(client))
     await room.send('Channel Created', delete_after = 5)
     return create_music_room_info(guild, room, threads)   
-   
-    
+
+
 async def get_main_message(guild: discord.Guild) -> discord.Message:
     # try:
     room = get_music_room(guild)
@@ -97,16 +97,16 @@ async def get_main_message(guild: discord.Guild) -> discord.Message:
     # except Exception as e:
     #     print('NO MAIN MESSAGE FOR U @', e)
     return None
-        
-        
+
+
 async def get_thread_message(guild: discord.Guild, thread_type: str) -> discord.Message:
     try:
         return (await get_thread(guild, thread_type).history(limit=1, oldest_first = True).flatten())[0]
     except Exception as e:
         print('NO THREAD MESSAGE FOR U', e)
         return None
-        
-        
+
+
 async def create_threads(client: commands.Bot,
                          room: discord.TextChannel) -> list:
         threads = [('settings_id', 'Settings'),
@@ -121,8 +121,8 @@ async def create_threads(client: commands.Bot,
                 await thread.send(content = 'Search Platform', view = ThreadHandler.create_settings_view(client))
             threads_ids.append((thread_info[0], thread.id))
         return threads_ids         
-        
-        
+
+
 class MusicRoomCog(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
@@ -133,13 +133,13 @@ class MusicRoomCog(commands.Cog):
         message = await get_main_message(guild)
         handler = MessageHandler(message)
         await handler.update_embed(track)
-    
+
 
     #TODO Переместить в messagehandler
     async def update_main_view(self, guild: discord.Guild):
         main_message = await get_main_message(guild)
         await main_message.edit(view = MessageHandler.create_main_view(self.client))
-        
+
     #TODO Переместить в messagehandler    
     async def update_threads_views(self, guild: discord.Guild):
         threads = ['settings_id', 'queue_id']
@@ -147,8 +147,8 @@ class MusicRoomCog(commands.Cog):
             thread_message = await get_thread_message(guild, thread)
             if thread == 'settings_id':
                 await thread_message.edit(view = ThreadHandler.create_settings_view(self.client))    
-        
-                
+
+
     @commands.command(name = 'delete')
     async def delete(self, ctx: commands.Context):
         await ctx.channel.delete()
@@ -173,30 +173,30 @@ class MusicRoomCog(commands.Cog):
                     print('Deleting messages error')
         except Exception:
             print('Unknown Channel')
-    
-    
+
+
     ############ Listeners ############
-    
-    
+
+
 
     @commands.Cog.listener('on_guild_join')
     async def on_guild_join(self, guild: discord.Guild):
         await update_music_rooms_db(self.client) 
-        
-        
+
+
     @commands.Cog.listener('on_guild_remove')
     async def on_guild_remove(self, guild: discord.Guild):
         await update_music_rooms_db(self.client)    
-        
-       
+
+
     @commands.Cog.listener('on_message')
     async def play_music_on_message(self, message: discord.Message):
         if not message.author.bot:
             if message.channel == get_music_room(message.guild) and not message.content.startswith(settings['prefix'], 0, len(settings['prefix'])):
                 ctx = await self.client.get_context(message)
                 await ctx.invoke(self.client.get_command('play'), message.content)    
-        
-        
+
+
     @commands.Cog.listener('on_message')
     async def clear_music_room(self, message: discord.Message):
         if message.channel == get_music_room(message.guild) and not message.author.bot:
