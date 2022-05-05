@@ -35,4 +35,3 @@ class Track():
         track_url = data.get('track_url')
         author_url = data.get('author_url')
         return cls(src, title, author, thumbnail, track_url, author_url)
-      
