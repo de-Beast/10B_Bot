@@ -11,8 +11,8 @@ class Player(discord.VoiceClient):
     # TODO: Сделать работу с плейлистами (вроде изи)
     def __init__(self, client: commands.Bot, channel: discord.TextChannel):
         super().__init__(client, channel)
-        
-        
+
+
         self.queue = []
         self.looping = Loop.NOLOOP
         self.is_secret_shaffling = False
@@ -30,7 +30,7 @@ class Player(discord.VoiceClient):
             sleep(1)
             self.resume()
             self.update_info(track)
-            
+
 
 
     async def update_queue(self):
@@ -45,23 +45,23 @@ class Player(discord.VoiceClient):
             self.stop()
             self.queue[0].src.cleanup()
         self.play_next()
-        
-        
+
+
     def set_loop(self, loop_type: Loop):
         self.looping = loop_type
-                
-              
+
+
     def stop(self):
         self.queue.clear()
         super().stop()
-        
+
     def toggle(self):
         if self.is_playing():
             self.pause()
         elif self.is_paused():
             self.resume()
-        
-        
+
+
     def skip(self):
         if self.is_playing():
             super().stop()
