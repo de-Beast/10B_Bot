@@ -63,10 +63,10 @@ def check_room_correctness(guild: discord.Guild) -> dict | bool:
         if guild.id == info['guild_id']:
             room = guild.get_channel(info['room_id'])
             if room is None: return False
-            
 
             threads_ids = list(info['threads'].values())
             if threads_ids == []: return False
+
             for thread in room.threads:
                 if thread.id not in threads_ids: return False
 
