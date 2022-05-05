@@ -19,10 +19,7 @@ def update_music_rooms_dicts():
 
 
 def create_music_room_info(guild: discord.Guild, music_room: discord.TextChannel, threads: list):
-    info = {}
-    info['guild_id'] = guild.id
-    info['room_id'] = music_room.id
-    info['threads'] = {}
+    info = {'guild_id': guild.id, 'room_id': music_room.id, 'threads': {}}
     for thread in threads:
         info['threads'][thread[0]] = thread[1]
     print(str(guild) + ' (id: ', guild.id, ') Updated Music Room!!! - new id: ', music_room.id, sep = '')
