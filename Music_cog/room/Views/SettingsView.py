@@ -19,7 +19,4 @@ class SettingsView(ui.View):
                 emoji = '🐭')
             ])  
     async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
-        if select.values[0] == 'Youtube':
-            self.client.get_cog('Music').set_search_platform(select.values[0])
-        elif select.values[0] == 'VK':
-            self.client.get_cog('Music').set_search_platform(select.values[0])
+        self.client.get_cog('Music').set_search_platform(select.values[0])
