@@ -39,39 +39,5 @@ class MainView(ui.View):
         await ctx.invoke(self.client.get_command('stop'))
 
 
-    # @ui.select(row = 1, options = [
-    #     discord.SelectOption( 	#no loop
-    #         label = 'No Loop',
-    #         default = True),
-    #     discord.SelectOption( 	#loop
-    #         label = 'Loop',
-    #         emoji = '🔁'),
-    #     discord.SelectOption( 	#loop one
-    #         label = 'Loop One',
-    #         emoji = '🔂')])
-    # async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
-    #     ctx = await self.client.get_application_context(interaction)
-    #     if select.values[0] == 'No Loop':
-    #         await ctx.invoke(self.client.get_command('loop none'))
-    #     elif select.values[0] == 'Loop':
-    #         await ctx.invoke(self.client.get_command('loop'))
-    #     elif select.values[0] == 'Loop One':
-    #         await ctx.invoke(self.client.get_command('loop one'))
 
 
-    # @ui.select( row = 2, options = [
-    #     discord.SelectOption( 	#no shuffle
-    #         label = 'No Shuffle',
-    #         default = True),
-    #     discord.SelectOption( 	#shuffle
-    #         label = 'Shuffle',
-    #         emoji = '🔀'),
-    #     discord.SelectOption( 	#secret shuffle
-    #         label = 'Secret Shuffle',
-    #         emoji = '🔒')])
-    # async def shuffle_callback(self, select: ui.Select, interaction: discord.Interaction):
-    #     ctx = await self.client.get_application_context(interaction)
-    #     if select.values[0] == 'Shuffle':
-    #         await ctx.invoke(self.client.get_command('shuffle'))
-    #     # elif option.value == 'Shuffling':
-    #     # 	await ctx.invoke(self.client.get_command('shuffling'))

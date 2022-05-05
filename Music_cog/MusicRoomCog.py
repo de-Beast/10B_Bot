@@ -94,8 +94,6 @@ async def get_main_message(guild: discord.Guild) -> discord.Message:
     async for message in room.history(limit = 3, oldest_first = True):
         if len(message.embeds) > 0:
             return message
-    # except Exception as e:
-    #     print('NO MAIN MESSAGE FOR U @', e)
     return None
         
         

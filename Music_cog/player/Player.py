@@ -65,8 +65,6 @@ class Player(discord.VoiceClient):
     def skip(self):
         if self.is_playing():
             super().stop()
-            # self.player.pause()	
-        # self.update_queue()
 
 
     def update_info(self, track: Track):
