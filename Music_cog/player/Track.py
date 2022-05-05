@@ -17,15 +17,15 @@ class Track():
                  title: str, author: str, thumbnail: str,
                  track_url: str, author_url: str):
         self.src = src
-        
+
         self.track_url = track_url
         self.author_url = author_url
-        
+
         self.title = title
         self.author = author
         self.thumbnail = thumbnail
-        
-        
+
+
     @classmethod
     async def from_dict(cls, data: dict):
         src = await discord.FFmpegOpusAudio.from_probe(data['source'], **FFMPEG_OPTIONS)
@@ -35,5 +35,3 @@ class Track():
         track_url = data.get('track_url')
         author_url = data.get('author_url')
         return cls(src, title, author, thumbnail, track_url, author_url)
-    
-    

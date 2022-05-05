@@ -1,6 +1,5 @@
 from requests import session
 from json import dumps, loads
-from random import randint
 
 
 def get_api(token=''):
