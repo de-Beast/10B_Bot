@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from discord import ui
 from .message_config import conf
 from .Views import MainView, SettingsView
 
