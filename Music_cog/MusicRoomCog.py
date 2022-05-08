@@ -3,7 +3,7 @@ import json
 import discord
 from discord.ext import commands, tasks
 
-from config import settings
+from config_dev import settings
 
 from .room.Handlers import MessageHandler, ThreadHandler
 

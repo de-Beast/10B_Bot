@@ -1,6 +1,6 @@
 import Bot
 
-from config import settings
+from config_dev import settings
 from vk_api import get_api
 
 # TODO: 
