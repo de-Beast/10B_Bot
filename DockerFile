@@ -1,5 +1,11 @@
-FROM python:3-onbuild
+FROM python:3.10.4
 
-WORKDIR /usr/src/_10B_Bot
+WORKDIR /usr/src/app
 
-EXPOSE 8080
+COPY . .
+
+RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt
+
+EXPOSE 5000
+
+CMD ["python", "./Main.py"]

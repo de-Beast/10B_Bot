@@ -1,36 +1,35 @@
-from requests import session
 from json import dumps, loads
 
+from requests import session
 
-def get_api(token=''):
-	if 'vk_api' not in globals():
-		globals()['vk_api'] = Api(token)
-	return globals()['vk_api']
+
+def get_api(token=""):
+    if "vk_api" not in globals():
+        globals()["vk_api"] = Api(token)
+    return globals()["vk_api"]
+
 
 class Api:
-	token = ''
-	v = 5.131
-	session = None
+    token = ""
+    v = 5.131
+    session = None
 
-	def __init__(self, token: str, v: int = 5.131):
-		self.token = token
-		self.v = v
-		self.session = session()
+    def __init__(self, token: str, v: int = 5.131):
+        self.token = token
+        self.v = v
+        self.session = session()
 
-	def method(self, method: str, **args) -> dict:
-		"""Send request to vk api method with given args and return answer or None if error"""
-		try:
-			resp = self.session.get(
-				'https://api.vk.com/method/' + method,
-				params={
-					'v': self.v,
-					'access_token': self.token,
-					**args}
-			).text
-			resp = loads(resp)
-			if 'error' in resp:
-				raise Exception(dumps(resp['error']))
-		except Exception as e:
-			print('Ошибка:\n' + str(e))
-			return {}
-		return resp['response']
+    def method(self, method: str, **args) -> dict:
+        """Send request to vk api method with given args and return answer or None if error"""
+        try:
+            resp = self.session.get(
+                "https://api.vk.com/method/" + method,
+                params={"v": self.v, "access_token": self.token, **args},
+            ).text
+            resp = loads(resp)
+            if "error" in resp:
+                raise Exception(dumps(resp["error"]))
+        except Exception as e:
+            print("Ошибка:\n" + str(e))
+            return {}
+        return resp["response"]
