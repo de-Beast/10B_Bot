@@ -1,0 +1,4 @@
+py-cord == 2.0.0b7
+youtube_dl == 2021.12.17
+ffmpeg == 1.4
+ffprobe == 0.5

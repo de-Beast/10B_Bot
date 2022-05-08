@@ -1,0 +1,5 @@
+FROM python:3-onbuild
+
+WORKDIR /usr/src/_10B_Bot
+
+EXPOSE 8080
