@@ -1,4 +1,6 @@
+import asyncio
 from enum import Enum
+from threading import Thread
 from time import sleep
 
 import discord
@@ -28,7 +30,7 @@ class Player(discord.VoiceClient):
             self.pause()
             sleep(1)
             self.resume()
-            # self.update_info(track)
+            self.call_display_playing_track(track)
 
     def update_queue(self):
         if self.looping == Loop.NOLOOP:
@@ -62,9 +64,9 @@ class Player(discord.VoiceClient):
             # self.player.pause()
         # self.update_queue()
 
-    def update_info(self, track: Track):
-        room_cog = self.client.get_cog("MusicRoomCog")
-        room_cog.update_info.start(self.guild, track)
+    def call_display_playing_track(self, track: Track):
+        cog: commands.Cog = self.client.get_cog('MusicRoomCog')
+        Thread(target=asyncio.run, args = [cog.display_playing_track(self.guild, track)]).start()
 
     async def add_tracks_to_queue(self, tracks_all_meta: list):
         for track_all_meta in tracks_all_meta:

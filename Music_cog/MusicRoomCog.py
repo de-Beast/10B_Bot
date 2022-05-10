@@ -1,7 +1,7 @@
 import json
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from config_dev import settings
 
@@ -103,9 +103,11 @@ async def create_music_room(client: commands.Bot, guild: discord.Guild):
 async def get_main_message(guild: discord.Guild) -> discord.Message:
     # try:
     room = get_music_room(guild)
+    c = 0
     async for message in room.history(limit=3, oldest_first=True):
-        if len(message.embeds) > 0:
+        if c == 2:
             return message
+        c += 1
     # except Exception as e:
     #     print('NO MAIN MESSAGE FOR U @', e)
     return None
@@ -146,11 +148,12 @@ class MusicRoomCog(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
 
-    @tasks.loop(seconds=5, count=1)
-    async def update_info(self, guild: discord.Guild, track):
+
+    async def display_playing_track(self, guild: discord.Guild, track):
         message = await get_main_message(guild)
         handler = MessageHandler(message)
         await handler.update_embed(track)
+
 
     # TODO Переместить в messagehandler
     async def update_main_view(self, guild: discord.Guild):
