@@ -5,6 +5,9 @@ WORKDIR /usr/src/app
 COPY . .
 
 RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt
+RUN apt-get -y update
+RUN apt-get -y upgrade
+RUN apt-get install -y ffmpeg
 
 EXPOSE 5000
 

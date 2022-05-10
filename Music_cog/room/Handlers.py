@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
+
 from .message_config import conf
 from .Views import MainView, SettingsView
+
 
 class MessageHandler():
     def __init__(self, message: discord.Message):
