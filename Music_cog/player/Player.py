@@ -28,7 +28,6 @@ class Player(discord.VoiceClient):
             self.pause()
             sleep(1)
             self.resume()
-            # self.update_info(track)
 
     def update_queue(self):
         if self.looping == Loop.NOLOOP:
@@ -61,10 +60,6 @@ class Player(discord.VoiceClient):
             super().stop()
             # self.player.pause()
         # self.update_queue()
-
-    def update_info(self, track: Track):
-        room_cog = self.client.get_cog("MusicRoomCog")
-        room_cog.update_info.start(self.guild, track)
 
     async def add_tracks_to_queue(self, tracks_all_meta: list):
         for track_all_meta in tracks_all_meta:

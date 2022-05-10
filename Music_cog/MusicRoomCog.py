@@ -1,7 +1,7 @@
 import json
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from config import settings
 
@@ -146,11 +146,6 @@ class MusicRoomCog(commands.Cog):
     def __init__(self, client: commands.Bot):
         self.client: commands.Bot = client
 
-    @tasks.loop(seconds=5, count=1)
-    async def update_info(self, guild: discord.Guild, track):
-        message = await get_main_message(guild)
-        handler = MessageHandler(message)
-        await handler.update_embed(track)
 
     # TODO Переместить в messagehandler
     async def update_main_view(self, guild: discord.Guild):
