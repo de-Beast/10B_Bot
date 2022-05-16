@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord.ext.pages import Page, Paginator
 
 import Music_cog
-from config_dev import settings
+from config import settings
 
 
 class TenB_Bot(commands.Bot):
