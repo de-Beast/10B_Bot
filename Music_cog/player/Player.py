@@ -1,8 +1,9 @@
+import asyncio
 from enum import Enum
 from time import sleep
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from .Track import Track
 
@@ -13,13 +14,16 @@ class Player(discord.VoiceClient):
     # TODO: Сделать работу с плейлистами (вроде изи)
     def __init__(self, client: commands.Bot, channel: discord.TextChannel):
         super().__init__(client, channel)
-
+        self.disconnect_timeout.start()
         self.queue = []
         self.looping = Loop.NOLOOP
         self.is_secret_shaffling = False
 
     def has_track(self):
         return self.is_playing() or self.is_paused()
+
+    def get_track(self):
+        return self.queue[0]
 
     def play_next(self):
         if len(self.queue) > 0:
@@ -75,3 +79,17 @@ class Player(discord.VoiceClient):
             if not self.has_track():
                 self.play_next()
             sleep(0.75)
+
+    @tasks.loop(seconds=5)
+    async def disconnect_timeout(self):
+        c = 0
+        while not self.has_track():
+            await asyncio.sleep(1)
+            c += 1
+            if self.has_track():
+                break
+            elif c == 60:
+                await self.disconnect()
+
+    async def on_disconnect(self):
+        self.disconnect_timeout.cancel()
