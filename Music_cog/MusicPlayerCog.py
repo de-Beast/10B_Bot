@@ -145,8 +145,9 @@ class MusicPlayerCog(commands.Cog):
         if ctx.author.voice is None:
             await ctx.send("You are not in the voice channel", delete_after=3)
             return False
-        await ctx.author.voice.channel.connect(reconnect=True, cls=Player)
+        await ctx.author.voice.channel.connect(timeout = 2, reconnect = True, cls = Player)
         return True
+    
 
     ############################## Checks ###################################
 

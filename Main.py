@@ -1,5 +1,5 @@
 import Bot
-from config_dev import settings
+from config import settings
 from vk_api import get_api
 
 # TODO:
