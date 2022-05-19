@@ -1,4 +1,3 @@
-import asyncio
 from enum import Enum
 from time import sleep
 
