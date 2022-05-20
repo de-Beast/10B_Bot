@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import discord
 
 FFMPEG_OPTIONS = {
@@ -9,25 +11,14 @@ FFMPEG_OPTIONS = {
     "options": "-vn",
 }
 
-
+@dataclass
 class Track:
-    def __init__(
-        self,
-        src: discord.FFmpegOpusAudio,
-        title: str,
-        author: str,
-        thumbnail: str,
-        track_url: str,
-        author_url: str,
-    ):
-        self.src = src
-
-        self.track_url = track_url
-        self.author_url = author_url
-
-        self.title = title
-        self.author = author
-        self.thumbnail = thumbnail
+    src: discord.FFmpegOpusAudio
+    title: str
+    author: str
+    thumbnail: str
+    track_url: str
+    author_url: str
 
     @classmethod
     async def from_dict(cls, data: dict):

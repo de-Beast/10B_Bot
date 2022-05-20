@@ -46,22 +46,6 @@ async def update_music_rooms_db(client: commands.Bot, rooms: list = None):
     update_music_rooms_dicts()
 
 
-def get_music_room(guild: discord.Guild) -> discord.TextChannel:
-    for info in MUSIC_ROOMS_DICTS:
-        if guild.id == info["guild_id"]:
-            return guild.get_channel(info["room_id"])
-    print("NO CHANNEL FOR U")
-    return None
-
-
-def get_thread(guild: discord.Guild, thread_type: str) -> discord.Thread:
-    for info in MUSIC_ROOMS_DICTS:
-        if guild.id == info["guild_id"]:
-            return guild.get_thread(info["threads"][thread_type])
-    print("NO THREAD FOR U")
-    return None
-
-
 def check_room_correctness(guild: discord.Guild) -> dict | bool:
     for info in MUSIC_ROOMS_DICTS:
         if guild.id == info["guild_id"]:
@@ -79,6 +63,22 @@ def check_room_correctness(guild: discord.Guild) -> dict | bool:
 
             return info
     return False
+
+
+def get_music_room(guild: discord.Guild) -> discord.TextChannel:
+    for info in MUSIC_ROOMS_DICTS:
+        if guild.id == info["guild_id"]:
+            return guild.get_channel(info["room_id"])
+    print("NO CHANNEL FOR U")
+    return None
+
+
+def get_thread(guild: discord.Guild, thread_type: str) -> discord.Thread:
+    for info in MUSIC_ROOMS_DICTS:
+        if guild.id == info["guild_id"]:
+            return guild.get_thread(info["threads"][thread_type])
+    print("NO THREAD FOR U")
+    return None
 
 
 async def create_music_room(client: commands.Bot, guild: discord.Guild):
@@ -140,7 +140,7 @@ class MusicRoomCog(commands.Cog):
     @commands.check_any(
         commands.is_owner(), commands.has_guild_permissions(administrator=True)
     )
-    async def create_music_room_com(self, ctx: commands.Context):
+    async def create_music_room_command(self, ctx: commands.Context):
         room_info = await create_music_room(self.client, ctx.guild)
         await update_music_rooms_db(self.client, [room_info])
 
