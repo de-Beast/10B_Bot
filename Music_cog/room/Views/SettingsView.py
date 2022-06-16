@@ -1,19 +1,49 @@
+from typing import Optional
+
 import discord
 from discord import ui
-from discord.ext import commands
+from discord.ext import bridge  # type: ignore
+
+from abcs import ViewABC
+from enums import SearchPlatform
 
 
-class SettingsView(ui.View):
-    def __init__(self, client: commands.Bot):
-        super().__init__(timeout=None)
-        self.client: commands.Bot = client
+class SettingsView(ViewABC):
+    def __init__(self, *items: ui.Item):
+        super().__init__(*items, timeout=None)
+        self.__search_platform: SearchPlatform = SearchPlatform.YOUTUBE
+
+    @property
+    def search_platform(self):
+        return self.__search_platform
+
+    @classmethod
+    def from_message(cls, message: discord.Message) -> "SettingsView":  # type: ignore
+        base_view = super().from_message(message, timeout=None)
+        view = cls(*base_view.children)
+        for item in view.children:
+            if item.custom_id == "Search Platform Select":  # type: ignore
+                for option in item.options:  # type: ignore
+                    if option.default:
+                        view.__search_platform = SearchPlatform.get_key(option.value)
+        return view
 
     @ui.select(
+        custom_id="Search Platform Select",
         row=1,
         options=[
-            discord.SelectOption(label="Youtube", emoji="🐷", default=True),  # Youtube
-            discord.SelectOption(label="VK", emoji="🐭"),  # VK
+            discord.SelectOption(
+                label="Youtube", value="yt", emoji="🐷", default=True  # Youtube
+            ),  
+            discord.SelectOption(label="VK", value="vk", emoji="🐭"),  # VK
         ],
     )
     async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
-        self.client.get_cog("MusicPlayerCog").set_search_platform(select.values[0])
+        value = select.values[0]
+        self.__search_platform = SearchPlatform.get_key(value)
+        for option in select.options:
+            if option.value == value:
+                option.default = True
+            else:
+                option.default = False
+        await interaction.response.edit_message(view=self)

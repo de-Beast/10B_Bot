@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Текущий файл",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "pythonArgs": ["-i"],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "Начать отладку: Интегрированный Терминал",
             "type": "python",
             "request": "launch",

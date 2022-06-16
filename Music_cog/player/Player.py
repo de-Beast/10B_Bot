@@ -1,56 +1,84 @@
-from enum import Enum
+import asyncio
+from threading import Condition, Thread
 from time import sleep
+from typing import Optional
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import bridge, tasks  # type: ignore
+from loguru import logger
 
-from .Track import Track
+from enums import Loop, SearchPlatform, Shuffle
 
-Loop = Enum("Loop", "NOLOOP LOOP ONE", start=0)
+from . import Player_utils as plUtils
+from .Queue import Queue
+from .Track import Track, TrackInfo
+
+
+def notify_and_close_condition(cond: Condition):
+    with cond:
+        cond.notify_all()
 
 
 class Player(discord.VoiceClient):
     # TODO: Сделать работу с плейлистами (вроде изи)
-    def __init__(self, client: commands.Bot, channel: discord.TextChannel):
+    def __init__(self, client: bridge.Bot, channel: discord.VoiceChannel):
         super().__init__(client, channel)
         self.disconnect_timeout.start()
-        self.queue = []
-        self.looping = Loop.NOLOOP
-        self.is_secret_shaffling = False
+        self.__queue: Queue = Queue()
+        self._playing_track = None
 
-    def has_track(self):
+    @property
+    def has_track(self) -> bool:
         return self.is_playing() or self.is_paused()
 
-    def get_track(self):
-        return self.queue[0]
+    @property
+    def track(self) -> Optional[Track]:
+        return self.__queue.current_track
 
-    def play_next(self):
-        if len(self.queue) > 0:
-            track: Track = self.queue[0]
-            self.play(track.src, after=lambda a: self.update_queue())
-            self.pause()
-            sleep(1)
-            self.resume()
+    async def get_track_copy(self) -> Optional[Track]:
+        return await Track.from_track(self.__queue.current_track)
 
-    def update_queue(self):
-        if self.looping == Loop.NOLOOP:
-            self.queue.pop(0)
+    @property
+    def looping(self) -> Loop:
+        return self.__queue.looping
 
-        elif self.looping == Loop.LOOP:
-            self.queue[0]
-            self.queue.pop(0)
+    @looping.setter
+    def looping(self, loop_type: Loop):
+        self.__queue.looping = loop_type
 
-        elif self.looping == Loop.ONE:
-            self.stop()
+    def set_settings(self, looping: Loop, shuffle: Shuffle):
+        self.__queue.looping = looping
+        self.__queue.shuffle = shuffle
 
-        self.play_next()
+    @tasks.loop(seconds=1)
+    async def play_music(self):
+        if self.__queue.current_track is None:
+            self._playing_track = None
+            self.play_music.cancel()
+        if self.__queue.new_track:
+            self._playing_track = await self.get_track_copy()
+            asyncio.create_task(self.play_next())
 
-    def set_loop(self, loop_type: Loop):
-        self.looping = loop_type
+    async def play_next(self):
+        cond = Condition()
+        def _wait_for_end(cond: Condition) -> None:
+            with cond:
+                cond.wait()
+                self.__queue.update_queue()
+        
+        self.play(
+            self._playing_track.src, after=lambda x: notify_and_close_condition(cond)
+        )
+        self.__queue.new_track = False
+        self.pause()
+        await asyncio.sleep(1)
+        self.resume()
+        Thread(target=_wait_for_end, args=(cond,)).start()
 
     def stop(self):
-        self.queue.clear()
-        super().stop()
+        if self.has_track:
+            self.__queue.clear()
+            super().stop()
 
     def toggle(self):
         if self.is_playing():
@@ -59,36 +87,43 @@ class Player(discord.VoiceClient):
             self.resume()
 
     def skip(self):
-        if self.is_playing():
+        if self.has_track:
             super().stop()
-            # self.player.pause()
-        # self.update_queue()
 
-    async def add_tracks_to_queue(self, tracks_all_meta: list):
+    async def add_query(self, query: str, search_platform: SearchPlatform) -> None:
+        coro = asyncio.create_task(plUtils.define_stream_method(query, search_platform))
+        await asyncio.wait_for(coro, timeout=20)
+        tracks_all_meta = coro.result()
+        await self._add_tracks_to_queue(tracks_all_meta)
+
+    async def _add_tracks_to_queue(
+        self, tracks_all_meta: list[Optional[TrackInfo]]
+    ) -> None:
+        if tracks_all_meta is None:
+            logger.error("No tracks to add to queue")
+            return
         for track_all_meta in tracks_all_meta:
             if not track_all_meta:
                 continue
-            track = None
-            track = await Track.from_dict(track_all_meta)
-            if track:
-                self.queue.append(track)
-                for track in self.queue:
-                    print(track.title, end="\t")
-                print()
-            if not self.has_track():
-                self.play_next()
+            await self.__queue.add_track(track_all_meta)
+            logmessage = "TRACKS QUEUE:"
+            for track in self.__queue:
+                logmessage += "\n" + str(track)
+            logger.opt(colors=True).info(logmessage)
+            if not self.has_track:
+                await self.play_music.start()
             sleep(0.75)
 
     @tasks.loop(seconds=5)
     async def disconnect_timeout(self):
         c = 0
-        while not self.has_track():
+        while not self.has_track:
             await asyncio.sleep(1)
             c += 1
-            if self.has_track():
+            if self.has_track:
                 break
             elif c == 60:
                 await self.disconnect()
 
-    async def on_disconnect(self):
+    def __del__(self):
         self.disconnect_timeout.cancel()
