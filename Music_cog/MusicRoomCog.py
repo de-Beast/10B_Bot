@@ -26,7 +26,7 @@ class MusicRoomCog(MusicCogABC):
         if self.display_playing_track.track != track:
             self.display_playing_track.track = track
             handler = await MainMessageHandler.with_message(room)
-            await handler.update_embed(track)
+            await handler.update_embed(room.guild, track)
 
     ############################## Commands #################################
 
@@ -70,7 +70,6 @@ class MusicRoomCog(MusicCogABC):
 
     @commands.Cog.listener("on_message")
     async def play_music_on_message(self, message: discord.Message):
-        await message.channel.trigger_typing()
         if not message.author.bot:
             if message.channel == Utils.get_music_room(
                 message.guild
@@ -97,8 +96,8 @@ class MusicRoomCog(MusicCogABC):
                 handler = await MainMessageHandler.with_message(
                     Utils.get_music_room(guild)
                 )
-                await handler.update_main_view()
-                await handler.update_embed()
+                handler.update_main_view()
+                await handler.update_embed(guild)
                 await ThreadsHandler.update_threads_views(guild)
             except Exception as e:
                 logger.error(f"{e}")
@@ -129,7 +128,7 @@ class MusicRoomCog(MusicCogABC):
                 handler = await MainMessageHandler.with_message(
                     Utils.get_music_room(member.guild)
                 )
-                await handler.update_embed()
+                await handler.update_embed(member.guild)
 
 
 def setup(client: bridge.Bot):

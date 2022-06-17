@@ -1,3 +1,3 @@
 from .Player import Loop, Player
-from .Queue import Queue
+from .Queue import SimpleQueue
 from .Track import Track

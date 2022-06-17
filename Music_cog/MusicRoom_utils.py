@@ -56,7 +56,7 @@ async def create_music_room(
     view = MainMessageHandler.create_main_view()
     message = await room.send(
         file=MainMessageHandler.create_file(),
-        embed=MainMessageHandler.create_embed(),
+        embed=MainMessageHandler.create_embed(guild),
         view=view,
     )
     client.add_view(view, message_id=message.id)

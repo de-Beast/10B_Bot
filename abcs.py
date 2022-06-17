@@ -38,6 +38,13 @@ class ViewABC(ABC, ui.View):
     @property
     def client(self) -> bridge.Bot:
         return ViewABC._client
+    
+    @classmethod
+    @abstractmethod
+    def from_message(cls, child, message: discord.Message):  # type: ignore
+        base_view = super().from_message(message, timeout=None)
+        cls.__view_children_items__ = []
+        return child(*base_view.children)
 
 
 class HandlerABC(ABC):

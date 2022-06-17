@@ -59,7 +59,7 @@ class MusicPlayerCog(MusicCogABC):
                 search_platform: SearchPlatform = await ThreadsHandler.SettingsThreadHandler(
                     thread
                 ).search_platform
-            await player.add_query(query, search_platform)
+            await player.add_query(query, search_platform, ctx.message)
         try:
             await ctx.delete()
         except discord.NotFound:

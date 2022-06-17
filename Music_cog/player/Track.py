@@ -1,5 +1,6 @@
+import datetime
 from dataclasses import dataclass
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, Union
 
 import discord
 
@@ -18,6 +19,8 @@ class MetaData(TypedDict):
     title: str
     artist: str
     thumbnail: str
+    requested_by: Union[discord.User, discord.Member]
+    requested_at: datetime.datetime
 
 
 class TrackInfo(TypedDict):
@@ -38,6 +41,9 @@ class Track:
     track_url: str
     artist_url: str
 
+    requested_by: Union[discord.User, discord.Member]
+    requested_at: datetime.datetime
+
     @classmethod
     async def from_dict(cls, data: TrackInfo) -> "Track":
         src_url = data["source"]
@@ -45,9 +51,11 @@ class Track:
         title = data["meta"]["title"]
         artist = data["meta"]["artist"]
         thumbnail = data["meta"]["thumbnail"]
+        requested_by = data["meta"]["requested_by"]
+        requested_at = data["meta"]["requested_at"]
         track_url = data["track_url"]
         artist_url = data["artist_url"]
-        return cls(src_url, src, title, artist, thumbnail, track_url, artist_url)
+        return cls(src_url, src, title, artist, thumbnail, track_url, artist_url, requested_by, requested_at)
 
     @classmethod
     async def from_track(cls, track: Optional["Track"]) -> Optional["Track"]:
@@ -63,9 +71,14 @@ class Track:
                 track.thumbnail,
                 track.track_url,
                 track.artist_url,
+                track.requested_by,
+                track.requested_at
             )
         else:
             return None
+    
+    async def copy(self):
+        return await Track.from_track(self)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, self.__class__):

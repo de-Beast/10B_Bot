@@ -1,4 +1,6 @@
-from typing import Optional, Type
+import datetime
+import random
+from typing import Any, Optional, Union
 
 import discord
 from discord import ui
@@ -8,14 +10,66 @@ from loguru import logger
 from abcs import HandlerABC, ThreadHandlerABC
 from enums import SearchPlatform, ThreadType
 from Music_cog import Utils  # type: ignore
+from Music_cog.player.Track import Track
 
 from .message_config import conf  # type: ignore
 from .Views import MainView, SettingsView, setup_view_client  # type: ignore
 
 
+def rofl(requester: Union[discord.User, discord.Member]) -> str:
+    rofl_str = " – "
+    match requester.id:
+        case 447849746586140672:
+            rofl_str = random.choice(
+                (
+                    "ПОПУЩЕНЕЦ",
+                    "ОБСОСИК",
+                    "БЕРСЕРК ГАВНИЩЕ ЕБУЧЕЕ"
+                )
+            )
+        case 446753575465385998:
+            rofl_str += random.choice(
+                (
+                    "ВОТ БЫ ТЫ НЕ РАЗГОВАРИВАЛ",
+                    "ЖИРНОЕ ЧМО",
+                    "КАКАЯ ЖЕ НАСТЕНЬКА ОХУИТЕЛЬНАЯ",
+                )
+            )
+        case 309011989286354944:
+            rofl_str += random.choice(
+                (
+                    "МОЯ СЛАДЕНЬКАЯ БУЛОЧКА",
+                    "АНИМЕШНИК",
+                    "ТРАХНИ МЕНЯ"
+                )
+            )
+        case 600361186495692801:
+            rofl_str += random.choice(
+                (
+                    "ЛУЧШИЙ В МИРЕ",
+                    "СПАСИБО ЗА БОТА",
+                    "АПНУЛ ВТОРУЮ ПЛАТИНУ"
+                )
+            )
+    return rofl_str
+
+
 def setup(client: bridge.Bot):
     setup_view_client(client)
     HandlerABC._client = client
+
+
+def create_default_embed_properties(guild: discord.Guild) -> dict:
+    properties: dict[str, Any] = {}
+    footer = {"text": "prefix: ++"}
+    description = "|"
+    for thread_type in ThreadType:
+        thread = Utils.get_thread(guild, thread_type)
+        description += (
+            f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
+        )
+    properties.update(footer=footer, description=description)
+    return properties
 
 
 class MainMessageHandler(HandlerABC):
@@ -25,15 +79,15 @@ class MainMessageHandler(HandlerABC):
     @property
     def message(self):
         return self.__message
-    
+
     @property
     def looping(self):
-        return MainView.from_message(self.__message).looping
-    
+        return MainView.from_message(self.message).looping
+
     @property
     def shuffle(self):
-        return MainView.from_message(self.__message).shuffle
-        
+        return MainView.from_message(self.message).shuffle
+
     @classmethod
     async def with_message(cls, room: discord.TextChannel) -> "MainMessageHandler":
         handler = cls()
@@ -54,11 +108,8 @@ class MainMessageHandler(HandlerABC):
     def create_main_view() -> MainView:
         return MainView()
 
-    async def update_main_view(self):
-        self.client.add_view(
-            MainView(),
-            message_id=self.message.id,
-        )
+    def update_main_view(self):
+        self.client.add_view(MainView(), message_id=self.message.id)
 
     @staticmethod
     def create_file(
@@ -68,40 +119,41 @@ class MainMessageHandler(HandlerABC):
         return discord.File(open(path, "rb"), filename=name)
 
     @staticmethod
-    def create_embed(settings: dict = None) -> discord.Embed:
+    def create_embed(guild: discord.Guild, settings: dict = None) -> discord.Embed:
         if settings is None:
             settings = {
                 "title": "Queue is clear",
-                "type": "video",
+                "type": "rich",
                 "color": 0x00FF00,
-                "footer": {
-                    "text": "Type the music name",
-                    "icon_url": conf["back_image"],
-                },
                 "image": {"url": conf["back_image"]},
             }
+        default_properties = create_default_embed_properties(guild)
+        settings.update(default_properties)
 
         embed = discord.Embed.from_dict(settings)
         return embed
 
-    async def update_embed(self, track=None):
+    async def update_embed(self, guild: discord.Guild, track: Track = None):
         settings = None
         if track is not None:
             settings = {
                 "title": track.title,
-                "type": "video",
+                "type": "rich",
                 "color": 0x00FF00,
+                "timestamp": str(track.requested_at),
                 "url": track.track_url,
                 "author": {"name": track.artist, "url": track.artist_url},
-                "footer": {
-                    "text": "Playing",
-                    "icon_url": track.thumbnail
-                    if track.thumbnail
-                    else conf["back_image"],
-                },
                 "image": {"url": track.thumbnail},
+                "fields": [
+                    {
+                        "name": "Request Info",
+                        "inline": True,
+                        "value": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
+                                Requested <t:{track.requested_at.timestamp().__ceil__()}:R>"
+                    },
+                ],
             }
-        new_embed = self.create_embed(settings)
+        new_embed = self.create_embed(guild, settings)
         await self.message.edit(embed=new_embed)
 
 
@@ -109,8 +161,7 @@ class SettingsThreadHandler(ThreadHandlerABC):
     @property
     async def search_platform(self) -> SearchPlatform:
         thread_message: discord.Message = await self.get_thread_message(self.thread)  # type: ignore
-        view: SettingsView = SettingsView.from_message(thread_message)
-        return view.search_platform  # type: ignore
+        return SettingsView.from_message(thread_message).search_platform  # type: ignore
 
     @staticmethod
     def create_settings_view() -> SettingsView:

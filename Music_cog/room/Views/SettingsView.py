@@ -19,8 +19,7 @@ class SettingsView(ViewABC):
 
     @classmethod
     def from_message(cls, message: discord.Message) -> "SettingsView":  # type: ignore
-        base_view = super().from_message(message, timeout=None)
-        view = cls(*base_view.children)
+        view: SettingsView = super().from_message(cls, message)
         for item in view.children:
             if item.custom_id == "Search Platform Select":  # type: ignore
                 for option in item.options:  # type: ignore
@@ -34,7 +33,7 @@ class SettingsView(ViewABC):
         options=[
             discord.SelectOption(
                 label="Youtube", value="yt", emoji="🐷", default=True  # Youtube
-            ),  
+            ),
             discord.SelectOption(label="VK", value="vk", emoji="🐭"),  # VK
         ],
     )
