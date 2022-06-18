@@ -33,7 +33,7 @@ class DataBase:
 
     @property
     def music_rooms_collection(self):
-        return self.__database.Music_rooms_dev
+        return self.__database.Music_rooms
 
     @staticmethod
     def create_music_room_info(
@@ -64,16 +64,18 @@ class DataBase:
         return info["room_id"] if info else None
 
     def get_threads_ids(self, guild: discord.Guild) -> dict[ThreadType, int] | None:
-        info: dict[str, int] = self.music_rooms_collection.find_one(
+        info: dict[str, Any] = self.music_rooms_collection.find_one(
             {"guild_id": guild.id}, {"_id": 0, "threads": 1}
-        )["threads"]
-        edited_info: dict[ThreadType, int] = {}
-        for thread_type in ThreadType:
-            try:
-                edited_info[thread_type] = info.pop(thread_type.value)
-            except KeyError:
-                return None
-        return edited_info
+        )
+        if info is not None:
+            threads_ids: dict[str, int] = info["threads"]
+            edited_info: dict[ThreadType, int] = {}
+            for thread_type in ThreadType:
+                try:
+                    edited_info[thread_type] = threads_ids.pop(thread_type.value)
+                except KeyError:
+                    return None
+            return edited_info
 
 
 @overload

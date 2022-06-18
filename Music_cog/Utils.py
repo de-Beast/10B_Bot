@@ -21,7 +21,7 @@ def get_thread(
     guild: discord.Guild, thread_type: ThreadType
 ) -> Optional[discord.Thread]:
     threads_ids = DataBase().get_threads_ids(guild)
-    if threads_ids:
+    if threads_ids is not None:
         return guild.get_thread(threads_ids[thread_type])
     logger.warning("NO THREAD")
     return None
