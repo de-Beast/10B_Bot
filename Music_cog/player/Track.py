@@ -1,3 +1,7 @@
+import datetime
+from dataclasses import dataclass
+from typing import Optional, TypedDict, Union
+
 import discord
 
 FFMPEG_OPTIONS = {
@@ -6,35 +10,80 @@ FFMPEG_OPTIONS = {
 				-reconnect_streamed 1 \
 				-reconnect_at_eof 1 \
 				-reconnect_delay_max 2",
-    "options": "-vn",
+    "options": "-vn\
+                -bufsize 8192",
 }
 
 
+class MetaData(TypedDict):
+    title: str
+    artist: str
+    thumbnail: str
+    requested_by: Union[discord.User, discord.Member]
+    requested_at: datetime.datetime
+
+
+class TrackInfo(TypedDict):
+    meta: MetaData
+    source: str
+    track_url: str
+    artist_url: str
+
+
+@dataclass(slots=True, frozen=True)
 class Track:
-    def __init__(
-        self,
-        src: discord.FFmpegOpusAudio,
-        title: str,
-        author: str,
-        thumbnail: str,
-        track_url: str,
-        author_url: str,
-    ):
-        self.src = src
+    src_url: str
 
-        self.track_url = track_url
-        self.author_url = author_url
+    src: discord.FFmpegOpusAudio
+    title: str
+    artist: str
+    thumbnail: str
+    track_url: str
+    artist_url: str
 
-        self.title = title
-        self.author = author
-        self.thumbnail = thumbnail
+    requested_by: Union[discord.User, discord.Member]
+    requested_at: datetime.datetime
 
     @classmethod
-    async def from_dict(cls, data: dict):
+    async def from_dict(cls, data: TrackInfo) -> "Track":
+        src_url = data["source"]
         src = await discord.FFmpegOpusAudio.from_probe(data["source"], **FFMPEG_OPTIONS)
-        title = data["meta"].get("title")
-        author = data["meta"].get("author")
-        thumbnail = data["meta"].get("thumbnail")
-        track_url = data.get("track_url")
-        author_url = data.get("author_url")
-        return cls(src, title, author, thumbnail, track_url, author_url)
+        title = data["meta"]["title"]
+        artist = data["meta"]["artist"]
+        thumbnail = data["meta"]["thumbnail"]
+        requested_by = data["meta"]["requested_by"]
+        requested_at = data["meta"]["requested_at"]
+        track_url = data["track_url"]
+        artist_url = data["artist_url"]
+        return cls(src_url, src, title, artist, thumbnail, track_url, artist_url, requested_by, requested_at)
+
+    @classmethod
+    async def from_track(cls, track: Optional["Track"]) -> Optional["Track"]:
+        if isinstance(track, Track):
+            src = await discord.FFmpegOpusAudio.from_probe(
+                track.src_url, **FFMPEG_OPTIONS
+            )
+            return cls(
+                track.src_url,
+                src,
+                track.title,
+                track.artist,
+                track.thumbnail,
+                track.track_url,
+                track.artist_url,
+                track.requested_by,
+                track.requested_at
+            )
+        else:
+            return None
+    
+    async def copy(self):
+        return await Track.from_track(self)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, self.__class__):
+            return self.src_url == other.src_url
+        return False
+    
+    def __str__(self) -> str:
+        return f"<red>{self.title}</> @ {self.artist}"

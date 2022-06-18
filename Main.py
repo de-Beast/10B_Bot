@@ -1,19 +1,28 @@
+from loguru import logger
+
 import Bot
 from config import settings
 from vk_api import get_api
 
 # TODO:
 # [x] Разбить код на файлы
-# [x] Вместо фала использовать json или бд
+# [x] Вместо фала использовать бд
 # [x] Сделать кнопки рабочими
-# [ ] Добавить отображение текущего трека
-# [ ] Создать класс трека
-# [ ] Создать класс очереди
-# [ ] Создать собственный класс плеера
+# [x] Добавить отображение текущего трека
+# [x] Создать класс трека
+# [x] Переделать бота commands.Bot в bridge.Bot
+# [x] Создать класс очереди
+# [x] Создать собственный класс плеера
 # [ ] Ставить плейлисты в очереди
 # [ ] Мб решить проблему с капчами
 
+
+@logger.catch
+def main(discord_token: str):
+    client = Bot.TenB_Bot()
+    client.run(discord_token)
+
+
 if __name__ == "__main__":
     api = get_api(settings["vkadmin_token"])
-    client = Bot.TenB_Bot()
-    client.run(settings["token"])
+    main(settings["discord_token"])

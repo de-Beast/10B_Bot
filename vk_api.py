@@ -1,6 +1,6 @@
 from json import dumps, loads
 
-from requests import session
+from requests import Session, session
 
 
 def get_api(token=""):
@@ -12,13 +12,14 @@ def get_api(token=""):
 class Api:
     token = ""
     v = 5.131
-    session = None
+    session: Session
 
-    def __init__(self, token: str, v: int = 5.131):
+    def __init__(self, token: str, v: float = 5.131):
         self.token = token
         self.v = v
         self.session = session()
 
+    #
     def method(self, method: str, **args) -> dict:
         """Send request to vk api method with given args and return answer or None if error"""
         try:

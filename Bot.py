@@ -1,24 +1,25 @@
 import discord
-from discord.ext import commands
-from discord.ext.pages import Page, Paginator
+from discord.ext import bridge, commands  # type: ignore
+from discord.ext.pages import Page, Paginator  # type: ignore
+from loguru import logger
 
 import Music_cog
 from config import settings
 
 
-class TenB_Bot(commands.Bot):
+class TenB_Bot(bridge.Bot):
     def __init__(self):
-        super().__init__(command_prefix = settings['prefix'], intents = discord.Intents.all())
-        #Init Music modules
+        super().__init__(
+            command_prefix=settings["prefix"], intents=discord.Intents.all()
+        )
+        # Init Music modules
         Music_cog.setup_music_cogs(self)
 
-
     async def when_ready(self):
-        print(*self.guilds)
-        print("Bot is ready")
+        logger.info("Guild list::{guilds}", guilds = [str(guild) for guild in self.guilds])
+        logger.success("Bot is ready")
 
-
-    @commands.command(name = 'test')
+    @commands.command(name="test")
     async def test(self, ctx: commands.Context):
         my_pages = [
             Page(
