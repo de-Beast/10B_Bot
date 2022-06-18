@@ -33,7 +33,7 @@ class DataBase:
 
     @property
     def music_rooms_collection(self):
-        return self.__database.Music_rooms
+        return self.__database.Music_rooms_dev
 
     @staticmethod
     def create_music_room_info(
