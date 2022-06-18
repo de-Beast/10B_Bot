@@ -10,16 +10,7 @@ from enums import Loop, SearchPlatform, ThreadType
 
 from . import Utils
 from .player import Player
-from .room.Handlers import MainMessageHandler, ThreadsHandler  # type: ignore
-
-
-async def join(ctx: bridge.BridgeContext) -> bool:
-    if ctx.author.voice is None:
-        await ctx.send("You are not in the voice channel", delete_after=3)
-        return False
-    await ctx.author.voice.channel.connect(reconnect=True, cls=Player)
-    return True
-
+from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
 
 ############################## Checks ###################################
 
@@ -40,9 +31,16 @@ class MusicPlayerCog(MusicCogABC):
     ############################## Commands #################################
 
     # GROUP - PLAY
-    @bridge.bridge_command(name="play", aliases=["p", "add", "paly"], enabled=False)
+    @bridge.bridge_command(
+        name="play",
+        aliases=["p", "add", "paly"],
+        description="Finds track(or video) by query depending on the search platform and adds it to the queue",
+        description_localizations={
+            "ru": "Находит трек(видео) по запросу, исходя из выбранной платформы поиска, и добавляет его в очередь",
+        },
+        enabled=False,
+    )
     @commands.cooldown(1, 5, commands.BucketType.default)
-    # @is_connected()
     async def play(self, ctx: bridge.BridgeContext, *, query: str):
         try:
             await ctx.defer()
@@ -56,25 +54,15 @@ class MusicPlayerCog(MusicCogABC):
             if not query:
                 return
             if (thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS)) is not None:
-                search_platform: SearchPlatform = await ThreadsHandler.SettingsThreadHandler(
-                    thread
-                ).search_platform
+                search_platform: SearchPlatform = (
+                    await ThreadHandler.SettingsThreadHandler(thread).search_platform
+                )
             await player.add_query(query, search_platform, ctx.message)
         try:
             await ctx.delete()
         except discord.NotFound:
             pass
-        # tracks_all_meta = mp.define_stream_method(
-        #     music_name, search_platform=self.search_platform
-        # )
-        # # if list(tracks_all_meta) == [None]:
-        # # 	await ctx.send('Bruh... Something went wrong')
-        # # 	return None
-        # Thread(
-        #     target=asyncio.run, args=[player.add_tracks_to_queue(tracks_all_meta)]
-        # ).start()
 
-    # @play.before_invoke
     async def connection_to_voice_channel(self, ctx: bridge.BridgeContext) -> bool:
         try:
             if ctx.author.voice is None:
@@ -100,9 +88,13 @@ class MusicPlayerCog(MusicCogABC):
                         )
                     return False
             elif ctx.voice_client is None:
-                player = await ctx.author.voice.channel.connect(reconnect=True, cls=Player)
-                handler = await MainMessageHandler.with_message(Utils.get_music_room(ctx.guild))
-                player.set_settings(handler.looping, handler.shuffle)
+                player = await ctx.author.voice.channel.connect(
+                    reconnect=True, cls=Player
+                )
+                handler = await MainMessageHandler.with_message(
+                    Utils.get_music_room(ctx.guild)
+                )
+                player.looping = handler.looping
             elif ctx.author.voice.channel != ctx.voice_client.channel:
                 most_authoritative_role: Optional[discord.Role] = None
                 for member in ctx.voice_client.channel.members:
@@ -114,9 +106,13 @@ class MusicPlayerCog(MusicCogABC):
                 if most_authoritative_role <= ctx.author.top_role:
                     await ctx.voice_client.disconnect()
                     await asyncio.sleep(1)
-                    player = await ctx.author.voice.channel.connect(reconnect=True, cls=Player)
-                    handler = await MainMessageHandler.with_message(Utils.get_music_room(ctx.guild))
-                    player.set_settings(handler.looping, handler.shuffle)
+                    player = await ctx.author.voice.channel.connect(
+                        reconnect=True, cls=Player
+                    )
+                    handler = await MainMessageHandler.with_message(
+                        Utils.get_music_room(ctx.guild)
+                    )
+                    player.looping = handler.looping
                 else:
                     message = "The member with more authoritative role is currently using the bot"
                     await ctx.respond(message, delete_after=5)
@@ -129,41 +125,6 @@ class MusicPlayerCog(MusicCogABC):
         else:
             return True
         return False
-
-    @bridge.bridge_command(
-        name="pause_resume",
-        aliases=["pause", "pa", "pas", "resume", "res", "re", "toggle", "tog"],
-    )
-    @is_connected()
-    async def pause_resume(self, ctx: bridge.BridgeContext):
-        ctx.voice_client.toggle()
-
-    @bridge.bridge_command(name="skip", aliases=["s", "next"])
-    @is_connected()
-    async def skip(self, ctx: bridge.BridgeContext):
-        ctx.voice_client.skip()
-
-    @bridge.bridge_command(name="stop")
-    @is_connected()
-    async def stop(self, ctx: bridge.BridgeContext):
-        ctx.voice_client.stop()
-
-    @commands.group(name="loop", aliases=["l"])
-    @is_connected()
-    async def loop(self, ctx: bridge.BridgeContext):
-        player = ctx.voice_client
-        if player.looping == Loop.LOOP:
-            player.looping = Loop.NOLOOP
-        else:
-            player.looping = Loop.LOOP
-
-    @loop.command(name="one", aliases=["1"])
-    async def loop_one(self, ctx: bridge.BridgeContext):
-        ctx.voice_client.looping = Loop.ONE
-
-    @loop.command(name="none", aliases=["n", "no", "nothing"])
-    async def no_loop(self, ctx: bridge.BridgeContext):
-        ctx.voice_client.looping = Loop.NOLOOP
 
     @commands.command(name="disconnect", aliases=["dis", "d", "leave"])
     @is_connected()

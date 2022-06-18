@@ -13,7 +13,7 @@ from . import MusicRoom_utils as mrUtils
 from . import Utils
 from .player import Player
 from .room import Handlers  # type: ignore
-from .room.Handlers import MainMessageHandler, ThreadsHandler  # type: ignore
+from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
 
 
 class MusicRoomCog(MusicCogABC):
@@ -27,6 +27,17 @@ class MusicRoomCog(MusicCogABC):
             self.display_playing_track.track = track
             handler = await MainMessageHandler.with_message(room)
             await handler.update_embed(room.guild, track)
+    
+    async def clear_room(self, guild: discord.Guild):
+        room = Utils.get_music_room(guild)
+        try:
+            while len(await room.history(oldest_first=True).flatten()) > 3:  # type: ignore
+                try:
+                    await room.purge(check=lambda m: m.author != self.client.user)  # type: ignore
+                except Exception:
+                    logger.error("Deleting messages error")
+        except Exception:
+            logger.error("Unknown Channel")
 
     ############################## Commands #################################
 
@@ -45,18 +56,6 @@ class MusicRoomCog(MusicCogABC):
         room_info = await mrUtils.create_music_room(self.client, ctx.guild)
         DataBase().update_room_info(room_info)
 
-    @commands.command(name="clear_room", aliases=["clear", "c"])
-    @commands.cooldown(3, 5)
-    async def clear_room(self, ctx: commands.Context):
-        room = Utils.get_music_room(ctx.guild)
-        try:
-            while len(await room.history(oldest_first=True).flatten()) > 3:  # type: ignore
-                try:
-                    await room.purge(check=lambda m: m.author != self.client.user)  # type: ignore
-                except Exception:
-                    logger.error("Deleting messages error")
-        except Exception:
-            logger.error("Unknown Channel")
 
     ############ Listeners ############
 
@@ -70,7 +69,7 @@ class MusicRoomCog(MusicCogABC):
 
     @commands.Cog.listener("on_message")
     async def play_music_on_message(self, message: discord.Message):
-        if not message.author.bot:
+        if message.author != self.client.user:
             if message.channel == Utils.get_music_room(
                 message.guild
             ) and not message.content.startswith(
@@ -79,14 +78,7 @@ class MusicRoomCog(MusicCogABC):
                 ctx: commands.Context = await self.client.get_context(message)
                 ctx.args = message.content
                 await self.invoke_command(ctx, "play")
-
-    @commands.Cog.listener("on_message")
-    async def clear_music_room(self, message: discord.Message):
-        if (
-            message.channel == Utils.get_music_room(message.guild)
-            and not message.author.bot
-        ):
-            await self.clear_room(await self.client.get_context(message))
+                await self.clear_room(ctx.guild)
 
     @commands.Cog.listener("on_ready")
     async def check_music_rooms_in_guilds(self):
@@ -98,7 +90,7 @@ class MusicRoomCog(MusicCogABC):
                 )
                 handler.update_main_view()
                 await handler.update_embed(guild)
-                await ThreadsHandler.update_threads_views(guild)
+                await ThreadHandler.update_threads_views(guild)
             except Exception as e:
                 logger.error(f"{e}")
         await self.client.when_ready()

@@ -6,7 +6,9 @@ import discord
 from discord.ext import bridge, tasks  # type: ignore
 from loguru import logger
 
-from enums import Loop, SearchPlatform, Shuffle
+from enums import Loop, SearchPlatform, Shuffle, ThreadType
+from Music_cog import Utils
+from Music_cog.room.Handlers import ThreadHandler  # type: ignore
 
 from . import Player_utils as plUtils
 from .Queue import Queue
@@ -23,7 +25,7 @@ class Player(discord.VoiceClient):
     def __init__(self, client: bridge.Bot, channel: discord.VoiceChannel):
         super().__init__(client, channel)
         self.disconnect_timeout.start()
-        self.__queue: Queue = Queue()
+        self.__queue: Queue = Queue(channel.guild)
         self._playing_track = None
 
     @property
@@ -50,39 +52,37 @@ class Player(discord.VoiceClient):
     def shuffle(self, shuffle_type: Shuffle):
         self.__queue.shuffle = shuffle_type
 
-    def set_settings(self, looping: Loop, shuffle: Shuffle):
-        self.__queue.looping = looping
-        self.__queue.shuffle = shuffle
-
     @tasks.loop(seconds=1)
     async def play_music(self):
         if self.__queue.current_track is None:
             self._playing_track = None
             self.play_music.cancel()
-        if self.__queue.new_track:
+        elif self.__queue.new_track:
             self._playing_track = await self.track.copy()
-            asyncio.create_task(self.play_next())
+            await self.play_next(self.play_music.loop)
 
-    async def play_next(self):
+    async def play_next(self, loop: asyncio.AbstractEventLoop):
         cond = Condition()
 
-        def _wait_for_end(cond: Condition) -> None:
+        async def _wait_for_end(
+            cond: Condition, loop: asyncio.AbstractEventLoop
+        ) -> None:
             with cond:
                 cond.wait()
-                self.__queue.update_queue()
+                await self.__queue.update_queue(loop)
 
         self.play(
-            self._playing_track.src, after=lambda x: notify_and_close_condition(cond)
+            self._playing_track.src, after=lambda x: notify_and_close_condition(cond)  # type: ignore
         )
         self.__queue.new_track = False
         self.pause()
         await asyncio.sleep(1)
         self.resume()
-        Thread(target=_wait_for_end, args=(cond,)).start()
+        Thread(target=asyncio.run, args=(_wait_for_end(cond, loop),)).start()
 
-    def stop(self):
+    async def stop(self):
         if self.has_track:
-            self.__queue.clear()
+            await self.__queue.clear()
             super().stop()
 
     def toggle(self):
@@ -95,6 +95,11 @@ class Player(discord.VoiceClient):
         if self.has_track:
             super().stop()
 
+    def prev(self):
+        if self.has_track:
+            self.__queue.prepare_prev_track()
+            super().stop()
+
     async def add_query(
         self, query: str, search_platform: SearchPlatform, message: discord.Message
     ) -> None:
@@ -103,10 +108,10 @@ class Player(discord.VoiceClient):
         )
         await asyncio.wait_for(coro, timeout=20)
         tracks_all_meta = coro.result()
-        await self._add_tracks_to_queue(tracks_all_meta)
+        await self._add_tracks_to_queue(tracks_all_meta, message.guild)  # type: ignore
 
     async def _add_tracks_to_queue(
-        self, tracks_all_meta: list[Optional[TrackInfo]]
+        self, tracks_all_meta: list[Optional[TrackInfo]], guild: discord.Guild
     ) -> None:
         if tracks_all_meta is None:
             logger.error("No tracks to add to queue")
@@ -114,13 +119,22 @@ class Player(discord.VoiceClient):
         for track_all_meta in tracks_all_meta:
             if not track_all_meta:
                 continue
-            await self.__queue.add_track(await Track.from_dict(track_all_meta))
+
+            track = await Track.from_dict(track_all_meta)
+            await self.__queue.add_track(track)
+
             logmessage = "TRACKS QUEUE:"
             for track in self.__queue:
                 logmessage += "\n" + str(track)
             logger.opt(colors=True).info(logmessage)
             if not self.has_track:
                 self.play_music.start()
+
+    async def disconnect(self):
+        self.disconnect_timeout.cancel()
+        self.play_music.cancel()
+        await self.stop()
+        await super().disconnect()
 
     @tasks.loop(seconds=5)
     async def disconnect_timeout(self):
@@ -132,7 +146,3 @@ class Player(discord.VoiceClient):
                 break
             elif c == 60:
                 await self.disconnect()
-
-    def __del__(self):
-        self.play_music.cancel()
-        self.disconnect_timeout.cancel()

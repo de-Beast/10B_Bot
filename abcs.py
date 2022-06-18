@@ -72,6 +72,5 @@ class ThreadHandlerABC(HandlerABC, ABC):
             logger.warning("NO THREAD MESSAGE FOR U @", e)
             return None
 
-    @abstractmethod
     async def update_thread_views(self):
-        pass
+        raise NotImplementedError

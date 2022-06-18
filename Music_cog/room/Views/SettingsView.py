@@ -1,8 +1,5 @@
-from typing import Optional
-
 import discord
 from discord import ui
-from discord.ext import bridge  # type: ignore
 
 from abcs import ViewABC
 from enums import SearchPlatform
@@ -29,7 +26,7 @@ class SettingsView(ViewABC):
 
     @ui.select(
         custom_id="Search Platform Select",
-        row=1,
+        row=0,
         options=[
             discord.SelectOption(
                 label="Youtube", value="yt", emoji="🐷", default=True  # Youtube

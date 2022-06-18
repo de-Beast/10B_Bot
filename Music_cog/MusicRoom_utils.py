@@ -10,7 +10,7 @@ from enums import ThreadType
 from MongoDB import DataBase, MusicRoomInfo, StorageMusicRoomInfo
 
 from . import Utils  # type: ignore
-from .room.Handlers import MainMessageHandler, ThreadsHandler  # type: ignore
+from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
 
 
 async def update_music_rooms_db(client: bridge.Bot):
@@ -77,7 +77,7 @@ async def create_threads(
         thread.slowmode_delay = 21600
         match thread_type:
             case ThreadType.SETTINGS:
-                view = ThreadsHandler.SettingsThreadHandler.create_settings_view()
+                view = ThreadHandler.SettingsThreadHandler.create_settings_view()
                 message = await thread.send(content="Search Platform", view=view)
                 client.add_view(view, message_id=message.id)
         threads_ids.append((thread_type, thread.id))

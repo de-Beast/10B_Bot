@@ -42,6 +42,10 @@ class MainView(ViewABC):
         custom_id="Prev Button", emoji="⏮️", style=discord.ButtonStyle.primary, row=0
     )  # prev
     async def prev(self, button: ui.Button, interaction: discord.Interaction):
+        if interaction.guild is not None:
+            player: Union[Player, Any] = interaction.guild.voice_client
+            if player is not None:
+                player.prev()
         await interaction.response.defer()
 
     @ui.button(
@@ -54,8 +58,7 @@ class MainView(ViewABC):
         if interaction.guild is not None:
             player: Union[Player, Any] = interaction.guild.voice_client
             if player is not None:
-                ctx = await self.client.get_application_context(interaction)
-                await self.client.get_command("pause_resume")(ctx)
+                player.toggle()
                 if player.is_paused():
                     button.emoji = discord.PartialEmoji.from_str("▶️")
                 else:
@@ -68,9 +71,11 @@ class MainView(ViewABC):
         custom_id="Next Button", emoji="⏭️", style=discord.ButtonStyle.primary, row=0
     )  # next
     async def next(self, button: ui.Button, interaction: discord.Interaction):
+        if interaction.guild is not None:
+            player: Union[Player, Any] = interaction.guild.voice_client
+            if player is not None:
+                player.skip()
         await interaction.response.defer()
-        ctx = await self.client.get_application_context(interaction)
-        await self.client.get_command("skip")(ctx)
 
     @ui.button(
         custom_id="Clear Queue Button",
@@ -79,9 +84,11 @@ class MainView(ViewABC):
         row=0,
     )  # clear list
     async def clear(self, button: ui.Button, interaction: discord.Interaction):
+        if interaction.guild is not None:
+            player: Union[Player, Any] = interaction.guild.voice_client
+            if player is not None:
+                await player.stop()
         await interaction.response.defer()
-        ctx = await self.client.get_application_context(interaction)
-        await self.client.get_command("stop")(ctx)
 
     @ui.select(
         custom_id="Loop Select",
