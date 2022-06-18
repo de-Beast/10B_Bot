@@ -8,7 +8,7 @@ from discord.ext import bridge  # type: ignore
 from loguru import logger
 
 from abcs import HandlerABC, ThreadHandlerABC
-from enums import SearchPlatform, ThreadType
+from enums import SearchPlatform, Shuffle, ThreadType
 from Music_cog import Utils  # type: ignore
 from Music_cog.player.Track import Track
 
@@ -48,14 +48,13 @@ def setup(client: bridge.Bot):
 def create_default_embed_properties(guild: discord.Guild = None) -> dict:
     properties: dict[str, Any] = {"type": "rich", "color": 0x00FF00}
     if guild is not None:
-        footer = {"text": "prefix: ++"}
         description = "|"
         for thread_type in ThreadType:
             thread = Utils.get_thread(guild, thread_type)
             description += (
                 f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
             )
-        properties.update(footer=footer, description=description)
+        properties.update(description=description)
     return properties
 
 
@@ -128,19 +127,32 @@ class MainMessageHandler(MessageHandler):
         return discord.File(open(path, "rb"), filename=name)
 
     @staticmethod
-    def create_embed(guild: discord.Guild, settings: dict = None) -> discord.Embed:
+    def create_embed(
+        guild: discord.Guild,
+        settings: dict = None,
+        shuffle: Shuffle = None,
+    ) -> discord.Embed:
+        if shuffle is None:
+            shuffle = Shuffle.NOSHUFFLE
+        match shuffle:
+            case Shuffle.NOSHUFFLE:
+                footer = "Using default queue"
+            case Shuffle.SHUFFLE:
+                footer = "Using shuffled queue"
+            case Shuffle.SECRET:
+                footer = "Using secretly shuffled queue"
         if settings is None:
             settings = {
                 "title": "Queue is clear",
                 "image": {"url": conf["back_image"]},
             }
         default_properties = create_default_embed_properties(guild)
-        settings.update(default_properties)
+        settings.update(default_properties, footer={"text": footer})
 
         embed = discord.Embed.from_dict(settings)
         return embed
 
-    async def update_embed(self, guild: discord.Guild, track: Track = None):
+    async def update_embed(self, guild: discord.Guild, track: Track = None, shuffle: Shuffle = None):
         settings = None
         if track is not None:
             settings = {
@@ -160,7 +172,7 @@ class MainMessageHandler(MessageHandler):
                     },
                 ],
             }
-        new_embed = self.create_embed(guild, settings)
+        new_embed = self.create_embed(guild, settings, shuffle)
         await self.message.edit(embed=new_embed)
 
 
@@ -196,7 +208,9 @@ class QueueThreadHandler(ThreadHandlerABC):
             await self.thread.send(embed=embed)
 
     async def remove_track(self, /, *, all: bool = False):
-        await self.thread.purge(limit=1 if not all else None, check=lambda m: m.author == self.client.user)
+        await self.thread.purge(
+            limit=1 if not all else None, check=lambda m: m.author == self.client.user
+        )
 
 
 class ThreadHandler:

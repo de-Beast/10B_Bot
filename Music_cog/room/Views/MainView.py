@@ -36,7 +36,6 @@ class MainView(ViewABC):
                         if option.default:
                             view.__shuffle = Shuffle.get_key(option.value)
         return view
-    
 
     @ui.button(
         custom_id="Prev Button", emoji="⏮️", style=discord.ButtonStyle.primary, row=0
@@ -87,7 +86,7 @@ class MainView(ViewABC):
         if interaction.guild is not None:
             player: Union[Player, Any] = interaction.guild.voice_client
             if player is not None:
-                await player.stop()
+                await player.stop_player()
         await interaction.response.defer()
 
     @ui.select(
@@ -132,27 +131,28 @@ class MainView(ViewABC):
     async def shuffle_callback(
         self, select: ui.Select, interaction: discord.Interaction
     ):
-        player: Union[Player, Any] = None
-        for option in select.options:
-            option.default = False
+        for opt in select.options:
+            opt.default = False
         option = select.options[0]
-
+        
+        player: Union[Player, Any] = None
         if interaction.guild is not None:
             player = interaction.guild.voice_client
         if player is not None and player.has_track:
             value = select.values[0]
             self.__shuffle = Shuffle.get_key(value)
-            player.shuffle = self.__shuffle
             
             match value:
                 case "No Shuffle":
                     option.default = True
                 case "Shuffle":
                     select.placeholder = "🔀 Queue is shuffled"
-                    option.label = option.value
                 case "Secret Shuffle":
                     option = select.options[2]
                     option.default = True
+            await interaction.response.edit_message(view=self)
+            await player.set_shuffle(self.__shuffle)
         else:
             option.default = True
-        await interaction.response.edit_message(view=self)
+            await interaction.response.edit_message(view=self)
+        

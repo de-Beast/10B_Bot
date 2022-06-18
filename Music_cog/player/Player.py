@@ -8,7 +8,7 @@ from loguru import logger
 
 from enums import Loop, SearchPlatform, Shuffle, ThreadType
 from Music_cog import Utils
-from Music_cog.room.Handlers import ThreadHandler  # type: ignore
+from Music_cog.room.Handlers import MainMessageHandler  # type: ignore
 
 from . import Player_utils as plUtils
 from .Queue import Queue
@@ -48,9 +48,12 @@ class Player(discord.VoiceClient):
     def shuffle(self) -> Shuffle:
         return self.__queue.shuffle
 
-    @shuffle.setter
-    def shuffle(self, shuffle_type: Shuffle):
+    async def set_shuffle(self, shuffle_type: Shuffle):
         self.__queue.shuffle = shuffle_type
+        handler = await MainMessageHandler.with_message(
+            Utils.get_music_room(self.guild)
+        )
+        await handler.update_embed(self.guild, self.track, self.shuffle)
 
     @tasks.loop(seconds=1)
     async def play_music(self):
@@ -80,10 +83,10 @@ class Player(discord.VoiceClient):
         self.resume()
         Thread(target=asyncio.run, args=(_wait_for_end(cond, loop),)).start()
 
-    async def stop(self):
+    async def stop_player(self):
         if self.has_track:
             await self.__queue.clear()
-            super().stop()
+            self.stop()
 
     def toggle(self):
         if self.is_playing():
@@ -93,12 +96,12 @@ class Player(discord.VoiceClient):
 
     def skip(self):
         if self.has_track:
-            super().stop()
+            self.stop()
 
     def prev(self):
         if self.has_track:
             self.__queue.prepare_prev_track()
-            super().stop()
+            self.stop()
 
     async def add_query(
         self, query: str, search_platform: SearchPlatform, message: discord.Message
@@ -130,11 +133,11 @@ class Player(discord.VoiceClient):
             if not self.has_track:
                 self.play_music.start()
 
-    async def disconnect(self):
+    async def disconnect(self, *args, **kwargs):
         self.disconnect_timeout.cancel()
         self.play_music.cancel()
-        await self.stop()
-        await super().disconnect()
+        await self.stop_player()
+        await super().disconnect(*args, **kwargs)
 
     @tasks.loop(seconds=5)
     async def disconnect_timeout(self):

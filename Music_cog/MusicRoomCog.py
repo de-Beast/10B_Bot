@@ -26,8 +26,8 @@ class MusicRoomCog(MusicCogABC):
         if self.display_playing_track.track != track:
             self.display_playing_track.track = track
             handler = await MainMessageHandler.with_message(room)
-            await handler.update_embed(room.guild, track)
-    
+            await handler.update_embed(room.guild, track, player.shuffle if track is not None else None)
+
     async def clear_room(self, guild: discord.Guild):
         room = Utils.get_music_room(guild)
         try:
@@ -55,7 +55,6 @@ class MusicRoomCog(MusicCogABC):
     async def command_create_music_room(self, ctx: commands.Context):
         room_info = await mrUtils.create_music_room(self.client, ctx.guild)
         DataBase().update_room_info(room_info)
-
 
     ############ Listeners ############
 
