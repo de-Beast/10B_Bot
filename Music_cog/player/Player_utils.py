@@ -102,7 +102,7 @@ def get_vk_single(id: Optional[str], message: discord.Message) -> Optional[Track
             "title": audio[0]["title"],
             "artist": audio[0]["artist"],
             "thumbnail": audio[0]["album"]["thumb"]["photo_1200"]
-            if audio[0]["album"]
+            if "album" in audio[0]
             else None,
             "requested_by": message.author,
             "requested_at": message.created_at

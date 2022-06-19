@@ -14,8 +14,10 @@ from . import Player_utils as plUtils
 from .Queue import Queue
 from .Track import Track, TrackInfo
 
+TIMEOUT = 60
 
-def notify_and_close_condition(cond: Condition):
+
+def _notify_and_close_condition(cond: Condition):
     with cond:
         cond.notify_all()
 
@@ -75,7 +77,7 @@ class Player(discord.VoiceClient):
                 await self.__queue.update_queue(loop)
 
         self.play(
-            self._playing_track.src, after=lambda x: notify_and_close_condition(cond)  # type: ignore
+            self._playing_track.src, after=lambda x: _notify_and_close_condition(cond)  # type: ignore
         )
         self.__queue.new_track = False
         self.pause()
@@ -134,10 +136,9 @@ class Player(discord.VoiceClient):
                 self.play_music.start()
 
     async def disconnect(self, *args, **kwargs):
-        self.disconnect_timeout.cancel()
-        self.play_music.cancel()
-        await self.stop_player()
         await super().disconnect(*args, **kwargs)
+        await self.stop_player()
+        self.disconnect_timeout.cancel()
 
     @tasks.loop(seconds=5)
     async def disconnect_timeout(self):
@@ -147,5 +148,5 @@ class Player(discord.VoiceClient):
             c += 1
             if self.has_track:
                 break
-            elif c == 60:
+            elif c == TIMEOUT:
                 await self.disconnect()
