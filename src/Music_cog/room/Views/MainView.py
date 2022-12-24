@@ -1,15 +1,14 @@
+from ....abcs import ViewABC
 from typing import Any
 
 import discord
 from discord import ui
-from Music_cog import Utils
 
-import Music_cog.room.Handlers as Handlers
-import Music_cog.player as plr
-from abcs import ViewABC
-from enums import Loop, Shuffle
+from ....Music_cog import player as plr
+from ....Music_cog.room import Handlers as Handlers
+from ....enums import Loop, Shuffle
+from ....Music_cog import Utils
 
-    
 
 class MainView(ViewABC):
     def __init__(self, *items: ui.Item):
@@ -157,7 +156,9 @@ class MainView(ViewABC):
                     Utils.get_music_room(interaction.guild)
                 )
                 if handler:
-                    await handler.update_embed(interaction.guild, player.track, self.shuffle)
+                    await handler.update_embed(
+                        interaction.guild, player.track, self.shuffle
+                    )
                 return
 
         option.default = True

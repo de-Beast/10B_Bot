@@ -5,7 +5,7 @@ import discord
 from discord.ext import bridge, tasks
 from loguru import logger
 
-from enums import Loop, SearchPlatform, Shuffle
+from ...enums import Loop, SearchPlatform, Shuffle
 
 from . import Player_utils as plUtils
 from .Queue import Queue

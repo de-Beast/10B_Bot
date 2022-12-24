@@ -1,12 +1,12 @@
-import os
+from ..abcs import MusicCogABC
 from typing import Any
 
 import discord
 from discord.ext import bridge, commands, tasks
 from loguru import logger
 
-from abcs import MusicCogABC
-from MongoDB import DataBase
+from config import get_config
+from ..MongoDB import DataBase
 
 from . import MusicRoom_utils as mrUtils
 from . import Utils
@@ -33,7 +33,7 @@ class MusicRoomCog(MusicCogABC):
                 )
 
     async def clear_room(self, guild: discord.Guild):
-        room = Utils.get_music_room(guild) 
+        room = Utils.get_music_room(guild)
         try:
             while len(await room.history(oldest_first=True).flatten()) > 3:  # type: ignore
                 try:
@@ -76,7 +76,7 @@ class MusicRoomCog(MusicCogABC):
             if message.channel == Utils.get_music_room(
                 message.guild
             ) and not message.content.startswith(
-                os.getenv("PREFIX", ""), 0, len(os.getenv("PREFIX", ""))
+                get_config().get("PREFIX", ""), 0, len(get_config().get("PREFIX", ""))
             ):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
                 ctx.args = [message.content]

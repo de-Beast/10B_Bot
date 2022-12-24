@@ -5,11 +5,10 @@ import discord
 from discord.ext import bridge
 from loguru import logger
 
-from abcs import HandlerABC, ThreadHandlerABC
-from enums import SearchPlatform, Shuffle, ThreadType
-from Music_cog import Utils
-from Music_cog.player.Track import Track
-
+from ...abcs import HandlerABC, ThreadHandlerABC
+from ...enums import SearchPlatform, Shuffle, ThreadType
+from ...Music_cog import Utils
+from ...Music_cog.player.Track import Track
 from .message_config import conf
 from .Views import MainView, SettingsView, setup_view_client
 
@@ -88,7 +87,7 @@ class MessageHandler(HandlerABC):
 
 class MainMessageHandler(MessageHandler):
     @property
-    def looping(self): 
+    def looping(self):
         return MainView.from_message(self.message).looping
 
     @property
@@ -96,7 +95,7 @@ class MainMessageHandler(MessageHandler):
         return MainView.from_message(self.message).shuffle
 
     @classmethod
-    async def with_message_from_room(cls, room: discord.TextChannel | None) -> Self | None: # type: ignore[valid-type]
+    async def with_message_from_room(cls, room: discord.TextChannel | None) -> Self | None:  # type: ignore[valid-type]
         if room is None:
             return None
 
@@ -189,7 +188,7 @@ class SettingsThreadHandler(ThreadHandlerABC):
             self.thread
         )
         return (
-            SettingsView.from_message(thread_message).search_platform
+            SettingsView.from_message(thread_message).search_platform  # type: ignore[attr-defined]
             if thread_message is not None
             else SearchPlatform.YOUTUBE
         )
@@ -236,5 +235,5 @@ class ThreadHandler:
             match thread_type:
                 case ThreadType.SETTINGS:
                     await SettingsThreadHandler(
-                        Utils.get_thread(guild, thread_type)  # type: ignore
+                        Utils.get_thread(guild, thread_type)
                     ).update_thread_views()
