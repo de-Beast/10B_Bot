@@ -1,10 +1,25 @@
-settings = {
-    "discord_token": "NjY2NjU4MTcwNzkzMzYxNDM4.Xh3XzQ.n2B3flFo19nFMyY_ClNY2e2O7Fs",
-    "vkadmin_token": "e8541615ae7bd2d819b4b0367f2853ec7293f0e578ef46eda56028b77a97b471676019953f49b29cff384",
-    "db_url": "mongodb+srv://deBeast:wL9iXBJ2S1DVFD7R@10b.h95qh.mongodb.net/test",
-    "prefix": "++",
-    "room_name": "10B-classroom",
-}
+from dotenv import dotenv_values
 
-# 10B-DEV_room OTcyNzgwNTA2Nzc1MTg3NTA4.G2DRjI.dhN-qvFYsFwFwOfXlN96ZbaYTQ-_4vqXCin3B8
-# 10B-classroom NjY2NjU4MTcwNzkzMzYxNDM4.Xh3XzQ.n2B3flFo19nFMyY_ClNY2e2O7Fs
+from src.enums import Configuration
+
+
+def get_config(configuration: str = "prod") -> dict[str, str]:
+    if "config" not in globals():
+        globals()["config"] = {**dotenv_values(".env")}
+        config: dict = globals()["config"]
+
+        conf = Configuration.get_key(configuration)
+        match conf:
+            case Configuration.DEV:
+                config.update(DISCORD_TOKEN=config.pop("DISCORD_TOKEN-dev"))
+                config["CONFIGURATION"] = Configuration.DEV
+                config["PREFIX"] = "++"
+                config["ROOM_NAME"] = "10B-DEV_room"
+
+            case Configuration.PROD:
+                config.pop("DISCORD_TOKEN-dev")
+                config["CONFIGURATION"] = Configuration.PROD
+                config["PREFIX"] = "++"
+                config["ROOM_NAME"] = "10B-classroom"
+
+    return globals()["config"].copy()

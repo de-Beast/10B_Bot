@@ -1,19 +1,16 @@
-import datetime
 import random
-from typing import Any, Optional, Union
+from typing import Any, Self, Union
 
 import discord
-from discord import ui
-from discord.ext import bridge  # type: ignore
+from discord.ext import bridge
 from loguru import logger
 
-from abcs import HandlerABC, ThreadHandlerABC
-from enums import SearchPlatform, Shuffle, ThreadType
-from Music_cog import Utils  # type: ignore
-from Music_cog.player.Track import Track
-
-from .message_config import conf  # type: ignore
-from .Views import MainView, SettingsView, setup_view_client  # type: ignore
+from ...abcs import HandlerABC, ThreadHandlerABC
+from ...enums import SearchPlatform, Shuffle, ThreadType
+from ...Music_cog import Utils
+from ...Music_cog.player.Track import Track
+from .message_config import conf
+from .Views import MainView, SettingsView, setup_view_client
 
 
 def rofl(requester: Union[discord.User, discord.Member]) -> str:
@@ -45,7 +42,7 @@ def setup(client: bridge.Bot):
     HandlerABC._client = client
 
 
-def create_default_embed_properties(guild: discord.Guild = None) -> dict:
+def create_default_embed_properties(guild: discord.Guild | None = None) -> dict:
     properties: dict[str, Any] = {"type": "rich", "color": 0x00FF00}
     if guild is not None:
         description = "|"
@@ -98,16 +95,19 @@ class MainMessageHandler(MessageHandler):
         return MainView.from_message(self.message).shuffle
 
     @classmethod
-    async def with_message(cls, room: discord.TextChannel) -> "MainMessageHandler":  # type: ignore
-        handler = cls(await cls.get_main_message(room))  # type: ignore
-        return handler
+    async def with_message_from_room(cls, room: discord.TextChannel | None) -> Self | None:  # type: ignore[valid-type]
+        if room is None:
+            return None
+
+        message = await cls.get_main_message(room)
+        return cls(message) if message else None
 
     @staticmethod
-    async def get_main_message(room: discord.TextChannel) -> Optional[discord.Message]:
+    async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
             async for message in room.history(limit=3, oldest_first=True):
                 if len(message.embeds) > 0:
-                    return message  # type: ignore
+                    return message
         except Exception as e:
             logger.error(f"NO MAIN MESSAGE - {e}")
         return None
@@ -129,8 +129,8 @@ class MainMessageHandler(MessageHandler):
     @staticmethod
     def create_embed(
         guild: discord.Guild,
-        settings: dict = None,
-        shuffle: Shuffle = None,
+        settings: dict | None = None,
+        shuffle: Shuffle | None = None,
     ) -> discord.Embed:
         if shuffle is None:
             shuffle = Shuffle.NOSHUFFLE
@@ -152,7 +152,12 @@ class MainMessageHandler(MessageHandler):
         embed = discord.Embed.from_dict(settings)
         return embed
 
-    async def update_embed(self, guild: discord.Guild, track: Track = None, shuffle: Shuffle = None):
+    async def update_embed(
+        self,
+        guild: discord.Guild,
+        track: Track | None = None,
+        shuffle: Shuffle | None = None,
+    ):
         settings = None
         if track is not None:
             settings = {
@@ -179,8 +184,14 @@ class MainMessageHandler(MessageHandler):
 class SettingsThreadHandler(ThreadHandlerABC):
     @property
     async def search_platform(self) -> SearchPlatform:
-        thread_message: discord.Message = await self.get_thread_message(self.thread)  # type: ignore
-        return SettingsView.from_message(thread_message).search_platform  # type: ignore
+        thread_message: discord.Message | None = await self.get_thread_message(
+            self.thread
+        )
+        return (
+            SettingsView.from_message(thread_message).search_platform  # type: ignore[attr-defined]
+            if thread_message is not None
+            else SearchPlatform.YOUTUBE
+        )
 
     @staticmethod
     def create_settings_view() -> SettingsView:
@@ -195,7 +206,7 @@ class SettingsThreadHandler(ThreadHandlerABC):
 
 
 class QueueThreadHandler(ThreadHandlerABC):
-    async def send_track(self, track: Track, /, *, is_looping: bool = False):
+    async def send_track(self, track: Track, /, *, is_looping: bool = False) -> None:
         embed = MessageHandler.create_embed_from_track(track)
         async for message in self.thread.history(oldest_first=True):
             if message.author == self.client.user:
@@ -207,7 +218,7 @@ class QueueThreadHandler(ThreadHandlerABC):
         if not is_looping:
             await self.thread.send(embed=embed)
 
-    async def remove_track(self, /, *, all: bool = False):
+    async def remove_track(self, /, *, all: bool = False) -> None:
         await self.thread.purge(
             limit=1 if not all else None, check=lambda m: m.author == self.client.user
         )
@@ -224,5 +235,5 @@ class ThreadHandler:
             match thread_type:
                 case ThreadType.SETTINGS:
                     await SettingsThreadHandler(
-                        Utils.get_thread(guild, thread_type)  # type: ignore
+                        Utils.get_thread(guild, thread_type)
                     ).update_thread_views()

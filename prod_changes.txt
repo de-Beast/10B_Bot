@@ -1,2 +1,0 @@
-MongoDB.py -> music_rooms_collection -> db.Music_rooms_dev === Music_rooms
-config.py -> settings -> discord_token || room_name

@@ -1,13 +1,12 @@
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Optional
-
+from typing import Self
 import discord
 from discord import ui
-from discord.ext import bridge, commands  # type: ignore
+from discord.ext import bridge, commands
 from loguru import logger
 
 
-class CogABCMeta(discord.cog.CogMeta, ABCMeta):  # TODO Описать abc для MusicCog
+class CogABCMeta(discord.cog.CogMeta, ABCMeta):
     pass
 
 
@@ -21,6 +20,9 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
 
     async def invoke_command(self, ctx: bridge.BridgeExtContext, name: str):
         command = self._client.get_command(name)
+        if not command:
+            return
+
         if _ := not command.enabled:
             command.enabled = True
         try:
@@ -38,13 +40,13 @@ class ViewABC(ABC, ui.View):
     @property
     def client(self) -> bridge.Bot:
         return ViewABC._client
-    
+
     @classmethod
     @abstractmethod
-    def from_message(cls, child, message: discord.Message):  # type: ignore
+    def from_message(cls, child_cls, message: discord.Message) -> Self:  # type: ignore
         base_view = super().from_message(message, timeout=None)
         cls.__view_children_items__ = []
-        return child(*base_view.children)
+        return child_cls(*base_view.children)
 
 
 class HandlerABC(ABC):
@@ -57,17 +59,17 @@ class HandlerABC(ABC):
 
 
 class ThreadHandlerABC(HandlerABC, ABC):
-    def __init__(self, thread: discord.Thread):
-        self.__thread: discord.Thread = thread
+    def __init__(self, thread: discord.Thread | None):
+        self.__thread = thread
 
     @property
     def thread(self):
         return self.__thread
 
     @staticmethod
-    async def get_thread_message(thread: discord.Thread) -> Optional[discord.Message]:
+    async def get_thread_message(thread: discord.Thread) -> discord.Message | None:
         try:
-            return (await thread.history(limit=1, oldest_first=True).flatten())[0]  # type: ignore
+            return (await thread.history(limit=1, oldest_first=True).flatten())[0]
         except Exception as e:
             logger.warning("NO THREAD MESSAGE FOR U @", e)
             return None

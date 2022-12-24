@@ -3,12 +3,6 @@ from json import dumps, loads
 from requests import Session, session
 
 
-def get_api(token=""):
-    if "vk_api" not in globals():
-        globals()["vk_api"] = Api(token)
-    return globals()["vk_api"]
-
-
 class Api:
     token = ""
     v = 5.131
@@ -34,3 +28,9 @@ class Api:
             print("Ошибка:\n" + str(e))
             return {}
         return resp["response"]
+
+
+def get_api(token="") -> Api:
+    if "vk_api" not in globals():
+        globals()["vk_api"] = Api(token)
+    return globals()["vk_api"]

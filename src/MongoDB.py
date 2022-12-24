@@ -1,39 +1,40 @@
-from contextlib import contextmanager
-from typing import Any, Literal, Optional, TypedDict, overload
+from typing import Any, Self, TypedDict
 
 import discord
 import pymongo
 from loguru import logger
 
-from config import settings
-from enums import ThreadType
+from config import Configuration, get_config
+from .enums import ThreadType
 
 
 class MusicRoomInfo(TypedDict):
     guild_id: int
     room_id: int
-    threads: dict[ThreadType, int]
-
-
-class StorageMusicRoomInfo(TypedDict):
-    guild_id: int
-    room_id: int
-    threads: dict[str, int]
+    threads: dict[str | ThreadType, int]
 
 
 class DataBase:
-    __instance: Optional["DataBase"] = None
+    __instance: Self | None = None  # type: ignore[valid-type]
     __database: Any = None
 
     def __new__(cls):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.__database = pymongo.MongoClient(settings["db_url"]).TenB_Bot
+            cls.__database = pymongo.MongoClient(
+                get_config().get("MONGODB_URL")
+            ).TenB_Bot
         return cls.__instance
 
     @property
     def music_rooms_collection(self):
-        return self.__database.Music_rooms
+        match get_config().get("CONFIGURATION"):
+            case Configuration.PROD:
+                return self.__database.Music_rooms
+            case Configuration.DEV:
+                return self.__database.Music_rooms_dev
+            case _:
+                return self.__database.Music_rooms_dev
 
     @staticmethod
     def create_music_room_info(
@@ -41,9 +42,7 @@ class DataBase:
         music_room: discord.TextChannel,
         threads: list[tuple[ThreadType, int]],
     ) -> MusicRoomInfo:
-        info = MusicRoomInfo(
-            {"guild_id": guild.id, "room_id": music_room.id, "threads": {}}
-        )
+        info = MusicRoomInfo(guild_id=guild.id, room_id=music_room.id, threads={})
         for thread_type, id in threads:
             info["threads"][thread_type] = id
         logger.info(
@@ -78,33 +77,14 @@ class DataBase:
             return edited_info
 
 
-@overload
 def convert_music_room_info(
-    info: StorageMusicRoomInfo, *, for_storage: Literal[False]
+    info: MusicRoomInfo, *, for_storage: bool = True
 ) -> MusicRoomInfo:
-    ...
-
-
-@overload
-def convert_music_room_info(
-    info: MusicRoomInfo, *, for_storage: Literal[True] = True
-) -> StorageMusicRoomInfo:
-    ...
-
-
-def convert_music_room_info(info, *, for_storage=True):
-    if for_storage:
-        converted_info: StorageMusicRoomInfo = {
-            "guild_id": info["guild_id"],
-            "room_id": info["room_id"],
-            "threads": {thread.value: info["threads"][thread] for thread in ThreadType},
-        }
-        return converted_info
-
-    else:
-        converted_info: MusicRoomInfo = {
-            "guild_id": info["guild_id"],
-            "room_id": info["room_id"],
-            "threads": {thread: info["threads"][thread.value] for thread in ThreadType},
-        }
-        return converted_info
+    converted_info: MusicRoomInfo = {
+        "guild_id": info["guild_id"],
+        "room_id": info["room_id"],
+        "threads": {thread.value: info["threads"][thread] for thread in ThreadType}
+        if for_storage
+        else {thread: info["threads"][thread.value] for thread in ThreadType},
+    }
+    return converted_info

@@ -1,11 +1,13 @@
-from typing import Any, Union
+from ....abcs import ViewABC
+from typing import Any
 
 import discord
 from discord import ui
 
-from abcs import ViewABC
-from enums import Loop, Shuffle
-from Music_cog.player import Player
+from ....Music_cog import player as plr
+from ....Music_cog.room import Handlers as Handlers
+from ....enums import Loop, Shuffle
+from ....Music_cog import Utils
 
 
 class MainView(ViewABC):
@@ -15,11 +17,11 @@ class MainView(ViewABC):
         self.__shuffle: Shuffle = Shuffle.NOSHUFFLE
 
     @property
-    def looping(self):
+    def looping(self) -> Loop:
         return self.__looping
 
     @property
-    def shuffle(self):
+    def shuffle(self) -> Shuffle:
         return self.__shuffle
 
     @classmethod
@@ -42,8 +44,8 @@ class MainView(ViewABC):
     )  # prev
     async def prev(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
-            player: Union[Player, Any] = interaction.guild.voice_client
-            if player is not None:
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
+            if isinstance(player, plr.MusicPlayer):
                 player.prev()
         await interaction.response.defer()
 
@@ -55,8 +57,8 @@ class MainView(ViewABC):
     )  # paly / pause
     async def pause_resume(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
-            player: Union[Player, Any] = interaction.guild.voice_client
-            if player is not None:
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
+            if isinstance(player, plr.MusicPlayer):
                 player.toggle()
                 if player.is_paused():
                     button.emoji = discord.PartialEmoji.from_str("▶️")
@@ -71,7 +73,7 @@ class MainView(ViewABC):
     )  # next
     async def next(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
-            player: Union[Player, Any] = interaction.guild.voice_client
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
             if player is not None:
                 player.skip()
         await interaction.response.defer()
@@ -84,8 +86,8 @@ class MainView(ViewABC):
     )  # clear list
     async def clear(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
-            player: Union[Player, Any] = interaction.guild.voice_client
-            if player is not None:
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
+            if isinstance(player, plr.MusicPlayer):
                 await player.stop_player()
         await interaction.response.defer()
 
@@ -100,13 +102,12 @@ class MainView(ViewABC):
     )
     async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
         value = select.values[0]
-        self.__looping = Loop.get_key(value)
+        self.__looping = Loop.get_key(value)  # type: ignore
 
-        player: Union[Player, Any] = None
         if interaction.guild is not None:
-            player = interaction.guild.voice_client
-        if player is not None:
-            player.looping = self.__looping
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
+            if isinstance(player, plr.MusicPlayer):
+                player.looping = self.__looping
 
         for option in select.options:
             if option.value == value:
@@ -134,25 +135,31 @@ class MainView(ViewABC):
         for opt in select.options:
             opt.default = False
         option = select.options[0]
-        
-        player: Union[Player, Any] = None
+
         if interaction.guild is not None:
-            player = interaction.guild.voice_client
-        if player is not None and player.has_track:
-            value = select.values[0]
-            self.__shuffle = Shuffle.get_key(value)
-            
-            match value:
-                case "No Shuffle":
-                    option.default = True
-                case "Shuffle":
-                    select.placeholder = "🔀 Queue is shuffled"
-                case "Secret Shuffle":
-                    option = select.options[2]
-                    option.default = True
-            await interaction.response.edit_message(view=self)
-            await player.set_shuffle(self.__shuffle)
-        else:
-            option.default = True
-            await interaction.response.edit_message(view=self)
-        
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
+            if isinstance(player, plr.MusicPlayer) and player.has_track:
+                value = select.values[0]
+                self.__shuffle = Shuffle.get_key(value)  # type: ignore
+
+                match value:
+                    case "No Shuffle":
+                        option.default = True
+                    case "Shuffle":
+                        select.placeholder = "🔀 Queue is shuffled"
+                    case "Secret Shuffle":
+                        option = select.options[2]
+                        option.default = True
+                await interaction.response.edit_message(view=self)
+                player.shuffle = self.__shuffle
+                handler = await Handlers.MainMessageHandler.with_message_from_room(
+                    Utils.get_music_room(interaction.guild)
+                )
+                if handler:
+                    await handler.update_embed(
+                        interaction.guild, player.track, self.shuffle
+                    )
+                return
+
+        option.default = True
+        await interaction.response.edit_message(view=self)

@@ -1,8 +1,13 @@
+import sys
+from typing import TYPE_CHECKING
 from loguru import logger
 
-import Bot
-from config import settings
-from vk_api import get_api
+from src.Bot import TenB_Bot
+from config import get_config
+from src.vk_api import get_api
+
+if TYPE_CHECKING:
+    from src.vk_api import Api
 
 # TODO:
 # [x] Разбить код на файлы
@@ -18,11 +23,12 @@ from vk_api import get_api
 
 
 @logger.catch
-def main(discord_token: str):
-    client = Bot.TenB_Bot()
+def main(discord_token: str | None):
+    client = TenB_Bot()
     client.run(discord_token)
 
 
 if __name__ == "__main__":
-    api = get_api(settings["vkadmin_token"])
-    main(settings["discord_token"])
+    config: dict = get_config(sys.argv[1])
+    api: "Api" = get_api(config.get("VKADMIN_TOKEN"))
+    main(config.get("DISCORD_TOKEN"))
