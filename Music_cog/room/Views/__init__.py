@@ -1,4 +1,4 @@
-from discord.ext import bridge  # type: ignore
+from discord.ext import bridge
 
 from abcs import ViewABC
 

@@ -1,16 +1,16 @@
+import os
 import discord
-from discord.ext import bridge, commands  # type: ignore
-from discord.ext.pages import Page, Paginator  # type: ignore
+from discord.ext import bridge, commands
+from discord.ext.pages import Page, Paginator
 from loguru import logger
 
 import Music_cog
-from config import settings
 
 
 class TenB_Bot(bridge.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix=settings["prefix"], intents=discord.Intents.all()
+            command_prefix=os.getenv("PREFIX"), intents=discord.Intents.all()
         )
         # Init Music modules
         Music_cog.setup_music_cogs(self)

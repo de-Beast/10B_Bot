@@ -1,35 +1,39 @@
-from typing import Any, Union
+import os
+from typing import Any
 
 import discord
-from discord.ext import bridge, commands, tasks  # type: ignore
+from discord.ext import bridge, commands, tasks
 from loguru import logger
 
 from abcs import MusicCogABC
-from config import settings
-from enums import ThreadType
 from MongoDB import DataBase
 
 from . import MusicRoom_utils as mrUtils
 from . import Utils
-from .player import Player
-from .room import Handlers  # type: ignore
-from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
+from .player import MusicPlayer
+from .room import Handlers
+from .room.Handlers import MainMessageHandler, ThreadHandler
 
 
 class MusicRoomCog(MusicCogABC):
     @tasks.loop(seconds=1)
-    async def display_playing_track(self, room: discord.TextChannel, player: Player):
+    async def display_playing_track(
+        self, room: discord.TextChannel, player: MusicPlayer
+    ):
         try:
             track = player.track
         except Exception:
             track = None
-        if self.display_playing_track.track != track:
-            self.display_playing_track.track = track
-            handler = await MainMessageHandler.with_message(room)
-            await handler.update_embed(room.guild, track, player.shuffle if track is not None else None)
+        if self.display_playing_track.__getattribute__("track") != track:
+            self.display_playing_track.__setattr__("track", track)
+            handler = await MainMessageHandler.with_message_from_room(room)
+            if handler:
+                await handler.update_embed(
+                    room.guild, track, player.shuffle if track is not None else None
+                )
 
     async def clear_room(self, guild: discord.Guild):
-        room = Utils.get_music_room(guild)
+        room = Utils.get_music_room(guild) 
         try:
             while len(await room.history(oldest_first=True).flatten()) > 3:  # type: ignore
                 try:
@@ -50,7 +54,7 @@ class MusicRoomCog(MusicCogABC):
         aliases=["create", "make_room", "create_room", "make_music_room"],
     )
     @commands.check_any(
-        commands.is_owner(), commands.has_guild_permissions(administrator=True)
+        commands.is_owner(), commands.has_guild_permissions(administrator=True)  # type: ignore
     )
     async def command_create_music_room(self, ctx: commands.Context):
         room_info = await mrUtils.create_music_room(self.client, ctx.guild)
@@ -72,10 +76,10 @@ class MusicRoomCog(MusicCogABC):
             if message.channel == Utils.get_music_room(
                 message.guild
             ) and not message.content.startswith(
-                settings["prefix"], 0, len(settings["prefix"])
+                os.getenv("PREFIX", ""), 0, len(os.getenv("PREFIX", ""))
             ):
-                ctx: commands.Context = await self.client.get_context(message)
-                ctx.args = message.content
+                ctx: bridge.BridgeExtContext = await self.client.get_context(message)
+                ctx.args = [message.content]
                 await self.invoke_command(ctx, "play")
                 await self.clear_room(ctx.guild)
 
@@ -84,7 +88,7 @@ class MusicRoomCog(MusicCogABC):
         await mrUtils.update_music_rooms_db(self.client)
         for guild in self.client.guilds:
             try:
-                handler = await MainMessageHandler.with_message(
+                handler = await MainMessageHandler.with_message_from_room(
                     Utils.get_music_room(guild)
                 )
                 handler.update_main_view()
@@ -101,25 +105,30 @@ class MusicRoomCog(MusicCogABC):
         before: discord.VoiceState,
         after: discord.VoiceState,
     ):
-        if member.id == self.client.user.id and before.channel != after.channel:
+        if (
+            self.client.user
+            and member.id == self.client.user.id
+            and before.channel != after.channel
+        ):
             if after.channel is not None:
                 try:
-                    player: Union[Player, Any] = member.guild.voice_client
-                    if not isinstance(player, Player):
+                    player: MusicPlayer | Any = member.guild.voice_client
+                    if not isinstance(player, MusicPlayer):
                         raise Exception("Not a Player Class")
                 except Exception as e:
                     logger.error(e)
                 if not self.display_playing_track.is_running():
-                    self.display_playing_track.track = None
+                    self.display_playing_track.__setattr__("track", None)
                     self.display_playing_track.start(
                         Utils.get_music_room(member.guild), player
                     )
             else:
                 self.display_playing_track.cancel()
-                handler = await MainMessageHandler.with_message(
+                handler = await MainMessageHandler.with_message_from_room(
                     Utils.get_music_room(member.guild)
                 )
-                await handler.update_embed(member.guild)
+                if handler:
+                    await handler.update_embed(member.guild)
 
 
 def setup(client: bridge.Bot):

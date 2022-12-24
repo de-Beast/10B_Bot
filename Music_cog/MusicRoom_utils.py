@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import discord
@@ -5,9 +6,8 @@ from discord.ext import bridge  # type: ignore
 from loguru import logger
 
 import MongoDB as mdb
-from config import settings
 from enums import ThreadType
-from MongoDB import DataBase, MusicRoomInfo, StorageMusicRoomInfo
+from MongoDB import DataBase, MusicRoomInfo
 
 from . import Utils  # type: ignore
 from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
@@ -23,22 +23,20 @@ async def update_music_rooms_db(client: bridge.Bot):
         db.update_room_info(info)
 
 
-def check_room_correctness(guild: discord.Guild, coll) -> Optional[MusicRoomInfo]:
-    info: StorageMusicRoomInfo = coll.find_one(
+def check_room_correctness(guild: discord.Guild, coll) -> MusicRoomInfo | None:
+    info: MusicRoomInfo = coll.find_one(
         {"guild_id": guild.id}, {"_id": 0, "guild_id": 1, "room_id": 1, "threads": 1}
     )
     if info is not None:
         guild_channel = guild.get_channel(info["room_id"])
-        music_room: Optional[discord.TextChannel] = (
+        music_room: discord.TextChannel | None = (
             guild_channel if isinstance(guild_channel, discord.TextChannel) else None
         )
         if music_room is None:
             return None
 
         for thread_key, thread_id in info["threads"].items():
-            if not ThreadType.get_key(thread_key) or thread_id not in tuple(
-                thread.id for thread in music_room.threads
-            ):
+            if isinstance(thread_key, str) and not ThreadType.get_key(thread_key) or thread_id not in (thread.id for thread in music_room.threads):
                 return None
 
         return mdb.convert_music_room_info(info, for_storage=False)
@@ -51,11 +49,10 @@ async def create_music_room(
     old_room = Utils.get_music_room(guild)
     if old_room:
         await old_room.delete()
-    room = await guild.create_text_channel(name=settings["room_name"], position=0)
+    room = await guild.create_text_channel(name=os.getenv("ROOM_NAME", "Missing-name"), position=0)
     threads = await create_threads(client, room)
     view = MainMessageHandler.create_main_view()
     message = await room.send(
-        file=MainMessageHandler.create_file(),
         embed=MainMessageHandler.create_embed(guild),
         view=view,
     )

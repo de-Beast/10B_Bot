@@ -1,21 +1,23 @@
 import asyncio
 import random
 from collections import deque
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import discord
 
 from enums import Loop, Shuffle, ThreadType
 from Music_cog import Utils
-from Music_cog.room.Handlers import ThreadHandler  # type: ignore
+import Music_cog.room.Handlers as Handlers
 
 from .Track import Track
 
+if TYPE_CHECKING:
+    from Music_cog.room.Handlers import QueueThreadHandler
 
 class SimpleQueue(deque):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._current_track: Optional[Track] = None
+        self._current_track: Track | None = None
         self.new_track: bool = False
 
         self._looping: Loop = Loop.NOLOOP
@@ -26,7 +28,7 @@ class SimpleQueue(deque):
         self.new_track = False
 
     async def add_track(
-        self, track: Track, handler: ThreadHandler.QueueThreadHandler = None
+        self, track: Track, handler: "QueueThreadHandler | None" = None
     ):
         if track is not None:
             if self._current_track is None:
@@ -46,8 +48,8 @@ class SimpleQueue(deque):
 
     async def update_queue(
         self,
-        loop: asyncio.AbstractEventLoop = None,
-        handler: ThreadHandler.QueueThreadHandler = None,
+        loop: asyncio.AbstractEventLoop | None = None,
+        handler: "QueueThreadHandler | None" = None,
     ):
         try:
             match self._looping:
@@ -72,7 +74,7 @@ class SimpleQueue(deque):
 class Queue(SimpleQueue):
     def __init__(self, guild: discord.Guild):
         super().__init__()
-        self._handler = ThreadHandler.QueueThreadHandler(
+        self._handler = Handlers.QueueThreadHandler(
             Utils.get_thread(guild, ThreadType.QUEUE)
         )
 
@@ -110,7 +112,7 @@ class Queue(SimpleQueue):
             raise TypeError("Shuffle type must be Shuffle enum")
 
     @property
-    def current_track(self) -> Optional[Track]:
+    def current_track(self) -> Track | None:
         if self.__shuffle is not Shuffle.NOSHUFFLE:
             return self.__shuffled_queue._current_track
         return self._current_track
@@ -133,7 +135,7 @@ class Queue(SimpleQueue):
         else:
             super().prepare_prev_track()
 
-    async def update_queue(self, loop: asyncio.AbstractEventLoop = None, *args):
+    async def update_queue(self, loop: asyncio.AbstractEventLoop | None = None, *args):
         match self.__shuffle:
             case Shuffle.NOSHUFFLE:
                 if len(self.__shuffled_queue) > 0:

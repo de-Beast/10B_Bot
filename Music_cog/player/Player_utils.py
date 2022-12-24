@@ -1,6 +1,7 @@
 from re import fullmatch
 from time import sleep
-from typing import Generator, Optional
+from typing import Generator
+import datetime
 
 import discord
 import youtube_dl  # type: ignore
@@ -22,7 +23,7 @@ YDL_OPTIONS = {
 }
 
 
-def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo:
+def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo | None:
     logger.info("single yt")
     with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
@@ -36,11 +37,11 @@ def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo:
             "artist": info["uploader"],
             "thumbnail": info["thumbnails"][-1]["url"],
             "requested_by": message.author,
-            "requested_at": message.created_at
+            "requested_at": message.created_at,
         },
         "track_url": info["webpage_url"],
         "artist_url": info["uploader_url"],
-    })
+    }) if info else None
 
 
 def search_yt_list(search_method: str, message: discord.Message) -> Generator[TrackInfo, None, None]:
@@ -65,7 +66,7 @@ def search_yt_list(search_method: str, message: discord.Message) -> Generator[Tr
         })
 
 
-def get_vk_album(owner_id: int, id: int, key, message: discord.Message) -> Generator[Optional[TrackInfo], None, None]:
+def get_vk_album(owner_id: int, id: int, key, message: discord.Message) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -80,7 +81,7 @@ def get_vk_album(owner_id: int, id: int, key, message: discord.Message) -> Gener
         yield a
 
 
-def search_vk(name: str) -> Optional[str]:
+def search_vk(name: str) -> str | None:
     api = get_api()
     audio = api.method("audio.search", q=name, auto_complete=1)
     if audio["count"] == 0:
@@ -88,7 +89,7 @@ def search_vk(name: str) -> Optional[str]:
     return f"{audio['items'][0]['owner_id']}_{audio['items'][0]['id']}"
 
 
-def get_vk_single(id: Optional[str], message: discord.Message) -> Optional[TrackInfo]:
+def get_vk_single(id: str | None, message: discord.Message) -> TrackInfo | None:
     logger.info("single vk")
     if not id:
         return None
@@ -112,7 +113,7 @@ def get_vk_single(id: Optional[str], message: discord.Message) -> Optional[Track
     })
 
 
-async def define_stream_method(item: str, search_platform: SearchPlatform, message: discord.Message) -> list[Optional[TrackInfo]]:
+async def define_stream_method(item: str, search_platform: SearchPlatform, message: discord.Message) -> list[TrackInfo | None]:
     yt = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9]+)", item
     )

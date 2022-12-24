@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Self
 
 import discord
 from discord import ui
@@ -37,9 +37,9 @@ class SettingsView(ViewABC):
             discord.SelectOption(label="VK", value="vk", emoji="🐭"),  # VK
         ],
     )
-    async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
+    async def search_platform_callback(self, select: ui.Select, interaction: discord.Interaction):
         value = select.values[0]
-        self.__search_platform = SearchPlatform.get_key(value)
+        self.__search_platform = SearchPlatform.get_key(value)  # type: ignore
         for option in select.options:
             if option.value == value:
                 option.default = True

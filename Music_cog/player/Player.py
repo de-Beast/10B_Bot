@@ -1,14 +1,11 @@
 import asyncio
 from threading import Condition, Thread
-from typing import Optional
 
 import discord
-from discord.ext import bridge, tasks  # type: ignore
+from discord.ext import bridge, tasks
 from loguru import logger
 
-from enums import Loop, SearchPlatform, Shuffle, ThreadType
-from Music_cog import Utils
-from Music_cog.room.Handlers import MainMessageHandler  # type: ignore
+from enums import Loop, SearchPlatform, Shuffle
 
 from . import Player_utils as plUtils
 from .Queue import Queue
@@ -22,7 +19,7 @@ def _notify_and_close_condition(cond: Condition):
         cond.notify_all()
 
 
-class Player(discord.VoiceClient):
+class MusicPlayer(discord.VoiceClient):
     # TODO: Сделать работу с плейлистами (вроде изи)
     def __init__(self, client: bridge.Bot, channel: discord.VoiceChannel):
         super().__init__(client, channel)
@@ -35,7 +32,7 @@ class Player(discord.VoiceClient):
         return self.is_playing() or self.is_paused()
 
     @property
-    def track(self) -> Optional[Track]:
+    def track(self) -> Track | None:
         return self.__queue.current_track
 
     @property
@@ -50,12 +47,9 @@ class Player(discord.VoiceClient):
     def shuffle(self) -> Shuffle:
         return self.__queue.shuffle
 
-    async def set_shuffle(self, shuffle_type: Shuffle):
+    @shuffle.setter
+    def shuffle(self, shuffle_type: Shuffle):
         self.__queue.shuffle = shuffle_type
-        handler = await MainMessageHandler.with_message(
-            Utils.get_music_room(self.guild)
-        )
-        await handler.update_embed(self.guild, self.track, self.shuffle)
 
     @tasks.loop(seconds=1)
     async def play_music(self):
@@ -113,10 +107,10 @@ class Player(discord.VoiceClient):
         )
         await asyncio.wait_for(coro, timeout=20)
         tracks_all_meta = coro.result()
-        await self._add_tracks_to_queue(tracks_all_meta, message.guild)  # type: ignore
+        await self._add_tracks_to_queue(tracks_all_meta)
 
     async def _add_tracks_to_queue(
-        self, tracks_all_meta: list[Optional[TrackInfo]], guild: discord.Guild
+        self, tracks_all_meta: list[TrackInfo | None]
     ) -> None:
         if tracks_all_meta is None:
             logger.error("No tracks to add to queue")
@@ -135,8 +129,8 @@ class Player(discord.VoiceClient):
             if not self.has_track:
                 self.play_music.start()
 
-    async def disconnect(self, *args, **kwargs):
-        await super().disconnect(*args, **kwargs)
+    async def disconnect(self, *, force: bool = False):
+        await super().disconnect(force=force)
         await self.stop_player()
         self.disconnect_timeout.cancel()
 

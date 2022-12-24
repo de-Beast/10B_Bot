@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass
-from typing import Optional, TypedDict, Union
+from typing import Self, TypedDict, Union
 
 import discord
 
@@ -19,7 +19,7 @@ class MetaData(TypedDict):
     title: str
     artist: str
     thumbnail: str
-    requested_by: Union[discord.User, discord.Member]
+    requested_by: discord.User | discord.Member
     requested_at: datetime.datetime
 
 
@@ -55,10 +55,20 @@ class Track:
         requested_at = data["meta"]["requested_at"]
         track_url = data["track_url"]
         artist_url = data["artist_url"]
-        return cls(src_url, src, title, artist, thumbnail, track_url, artist_url, requested_by, requested_at)
+        return cls(
+            src_url,
+            src,
+            title,
+            artist,
+            thumbnail,
+            track_url,
+            artist_url,
+            requested_by,
+            requested_at,
+        )
 
     @classmethod
-    async def from_track(cls, track: Optional["Track"]) -> Optional["Track"]:
+    async def from_track(cls, track: Self | None) -> Self | None: # type: ignore[valid-type]
         if isinstance(track, Track):
             src = await discord.FFmpegOpusAudio.from_probe(
                 track.src_url, **FFMPEG_OPTIONS
@@ -72,11 +82,11 @@ class Track:
                 track.track_url,
                 track.artist_url,
                 track.requested_by,
-                track.requested_at
+                track.requested_at,
             )
         else:
             return None
-    
+
     async def copy(self):
         return await Track.from_track(self)
 
@@ -84,6 +94,6 @@ class Track:
         if isinstance(other, self.__class__):
             return self.src_url == other.src_url
         return False
-    
+
     def __str__(self) -> str:
         return f"<red>{self.title}</> @ {self.artist}"

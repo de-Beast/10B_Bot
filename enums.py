@@ -1,12 +1,12 @@
 from enum import Enum
-from typing import Optional
+from typing import Self
 
 
 class Loop(Enum):
     NOLOOP = "No Loop"
     LOOP = "Loop"
     ONE = "Loop One"
-    
+
     @classmethod
     def get_key(cls, looping: str) -> "Loop":
         loop = [loop for loop in cls if loop.value == looping][0]
@@ -17,7 +17,7 @@ class Shuffle(Enum):
     NOSHUFFLE = "No Shuffle"
     SHUFFLE = "Shuffle"
     SECRET = "Secret Shuffle"
-    
+
     @classmethod
     def get_key(cls, shuffle: str) -> "Shuffle":
         shuf = [loop for loop in cls if loop.value == shuffle][0]
@@ -29,8 +29,8 @@ class ThreadType(Enum):
     SETTINGS: str = "settings_id"
 
     @classmethod
-    def get_key(cls, thread_type: str) -> Optional["ThreadType"]:
-        return [thread for thread in cls if thread.value == thread_type][0] # type: ignore
+    def get_key(cls, thread_type: str) -> Self | None: # type: ignore[valid-type]
+        return [thread for thread in cls if thread.value == thread_type][0]
 
 
 class SearchPlatform(Enum):

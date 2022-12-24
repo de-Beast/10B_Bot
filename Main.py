@@ -1,8 +1,13 @@
+import os
+from typing import TYPE_CHECKING
+import dotenv
 from loguru import logger
 
 import Bot
-from config import settings
 from vk_api import get_api
+
+if TYPE_CHECKING:
+    from vk_api import Api
 
 # TODO:
 # [x] Разбить код на файлы
@@ -18,11 +23,12 @@ from vk_api import get_api
 
 
 @logger.catch
-def main(discord_token: str):
+def main(discord_token: str | None):
     client = Bot.TenB_Bot()
     client.run(discord_token)
 
 
 if __name__ == "__main__":
-    api = get_api(settings["vkadmin_token"])
-    main(settings["discord_token"])
+    dotenv.load_dotenv()
+    api: "Api" = get_api(os.getenv("VKADMIN_TOKEN"))
+    main(os.getenv("DISCORD_TOKEN"))

@@ -41,6 +41,7 @@ bld/
 .vscode/
 .idea/
 .pytest_cache/
+.env
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
