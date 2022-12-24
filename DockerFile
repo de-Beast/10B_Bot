@@ -1,5 +1,5 @@
-FROM python:3.10.7
-FROM alfg/ffmpeg:latest:3.10.5
+FROM python:3.11.1
+FROM jrottenberg/ffmpeg:4-alpine
 
 WORKDIR /usr/src/app
 

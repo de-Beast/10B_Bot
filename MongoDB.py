@@ -26,7 +26,13 @@ class DataBase:
 
     @property
     def music_rooms_collection(self):
-        return self.__database.Music_rooms_dev
+        match os.getenv("CONFIGURATION"):
+            case "PRODUCTION":
+                return self.__database.Music_rooms
+            case "DEV":
+                return self.__database.Music_rooms_dev
+            case _:
+                return self.__database.Music_rooms_dev
 
     @staticmethod
     def create_music_room_info(
