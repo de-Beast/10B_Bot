@@ -1,11 +1,11 @@
-import os
-from typing import Any, TypedDict, Self
+from typing import Any, Self, TypedDict
 
 import discord
 import pymongo
 from loguru import logger
 
-from enums import ThreadType
+from config import Configuration, get_config
+from .enums import ThreadType
 
 
 class MusicRoomInfo(TypedDict):
@@ -15,21 +15,23 @@ class MusicRoomInfo(TypedDict):
 
 
 class DataBase:
-    __instance: Self | None = None # type: ignore[valid-type]
+    __instance: Self | None = None  # type: ignore[valid-type]
     __database: Any = None
 
     def __new__(cls):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.__database = pymongo.MongoClient(os.getenv("MONGODB_URL")).TenB_Bot
+            cls.__database = pymongo.MongoClient(
+                get_config().get("MONGODB_URL")
+            ).TenB_Bot
         return cls.__instance
 
     @property
     def music_rooms_collection(self):
-        match os.getenv("CONFIGURATION"):
-            case "PRODUCTION":
+        match get_config().get("CONFIGURATION"):
+            case Configuration.PROD:
                 return self.__database.Music_rooms
-            case "DEV":
+            case Configuration.DEV:
                 return self.__database.Music_rooms_dev
             case _:
                 return self.__database.Music_rooms_dev
@@ -82,7 +84,7 @@ def convert_music_room_info(
         "guild_id": info["guild_id"],
         "room_id": info["room_id"],
         "threads": {thread.value: info["threads"][thread] for thread in ThreadType}
-                    if for_storage
-                    else {thread: info["threads"][thread.value] for thread in ThreadType},
+        if for_storage
+        else {thread: info["threads"][thread.value] for thread in ThreadType},
     }
     return converted_info

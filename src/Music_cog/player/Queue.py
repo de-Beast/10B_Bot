@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from enums import Loop, Shuffle, ThreadType
-from Music_cog import Utils
-import Music_cog.room.Handlers as Handlers
+from ...enums import Loop, Shuffle, ThreadType
+from ...Music_cog import Utils
+from ...Music_cog.room import Handlers as Handlers
 
 from .Track import Track
 
 if TYPE_CHECKING:
-    from Music_cog.room.Handlers import QueueThreadHandler
+    from ...Music_cog.room.Handlers import QueueThreadHandler
 
 class SimpleQueue(deque):
     def __init__(self) -> None:

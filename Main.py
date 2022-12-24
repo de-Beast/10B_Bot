@@ -1,13 +1,13 @@
-import os
+import sys
 from typing import TYPE_CHECKING
-import dotenv
 from loguru import logger
 
-import Bot
-from vk_api import get_api
+from src.Bot import TenB_Bot
+from config import get_config
+from src.vk_api import get_api
 
 if TYPE_CHECKING:
-    from vk_api import Api
+    from src.vk_api import Api
 
 # TODO:
 # [x] Разбить код на файлы
@@ -24,11 +24,11 @@ if TYPE_CHECKING:
 
 @logger.catch
 def main(discord_token: str | None):
-    client = Bot.TenB_Bot()
+    client = TenB_Bot()
     client.run(discord_token)
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv()
-    api: "Api" = get_api(os.getenv("VKADMIN_TOKEN"))
-    main(os.getenv("DISCORD_TOKEN"))
+    config: dict = get_config(sys.argv[1])
+    api: "Api" = get_api(config.get("VKADMIN_TOKEN"))
+    main(config.get("DISCORD_TOKEN"))

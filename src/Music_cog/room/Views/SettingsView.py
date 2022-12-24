@@ -1,11 +1,10 @@
-from typing import Optional, Self
+from ....abcs import ViewABC
+from typing import Self
 
 import discord
 from discord import ui
-from discord.ext import bridge  # type: ignore
 
-from abcs import ViewABC
-from enums import SearchPlatform
+from ....enums import SearchPlatform
 
 
 class SettingsView(ViewABC):
@@ -18,7 +17,7 @@ class SettingsView(ViewABC):
         return self.__search_platform
 
     @classmethod
-    def from_message(cls, message: discord.Message) -> "SettingsView":  # type: ignore
+    def from_message(cls, message: discord.Message) -> Self:  # type: ignore
         view: SettingsView = super().from_message(cls, message)
         for item in view.children:
             if item.custom_id == "Search Platform Select":  # type: ignore
@@ -37,7 +36,9 @@ class SettingsView(ViewABC):
             discord.SelectOption(label="VK", value="vk", emoji="🐭"),  # VK
         ],
     )
-    async def search_platform_callback(self, select: ui.Select, interaction: discord.Interaction):
+    async def search_platform_callback(
+        self, select: ui.Select, interaction: discord.Interaction
+    ):
         value = select.values[0]
         self.__search_platform = SearchPlatform.get_key(value)  # type: ignore
         for option in select.options:

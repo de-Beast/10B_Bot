@@ -2,15 +2,14 @@ import asyncio
 from typing import Any
 
 import discord
-from discord.ext import bridge, commands  # type: ignore
+from discord.ext import bridge, commands
 from loguru import logger
 
-from abcs import MusicCogABC
-from enums import Loop, SearchPlatform, ThreadType
-
+from ..abcs import MusicCogABC
+from ..enums import Loop, SearchPlatform, ThreadType
 from . import Utils
 from .player import MusicPlayer
-from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
+from .room.Handlers import MainMessageHandler, ThreadHandler
 
 ############################## Checks ###################################
 

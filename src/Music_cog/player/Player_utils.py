@@ -1,15 +1,14 @@
 from re import fullmatch
 from time import sleep
 from typing import Generator
-import datetime
 
 import discord
-import youtube_dl  # type: ignore
+import youtube_dl # type: ignore
 from loguru import logger
 
-from enums import SearchPlatform
-from vk_api import get_api
+from ...vk_api import get_api
 
+from ...enums import SearchPlatform
 from .Track import TrackInfo
 
 YDL_OPTIONS = {
@@ -30,21 +29,29 @@ def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo 
             info = ydl.extract_info(search_method, download=False)["entries"][0]
         except Exception:
             info = ydl.extract_info(search_method, download=False)
-    return TrackInfo({
-        "source": info["formats"][0]["url"],
-        "meta": {
-            "title": info["title"],
-            "artist": info["uploader"],
-            "thumbnail": info["thumbnails"][-1]["url"],
-            "requested_by": message.author,
-            "requested_at": message.created_at,
-        },
-        "track_url": info["webpage_url"],
-        "artist_url": info["uploader_url"],
-    }) if info else None
+    return (
+        TrackInfo(
+            {
+                "source": info["formats"][0]["url"],
+                "meta": {
+                    "title": info["title"],
+                    "artist": info["uploader"],
+                    "thumbnail": info["thumbnails"][-1]["url"],
+                    "requested_by": message.author,
+                    "requested_at": message.created_at,
+                },
+                "track_url": info["webpage_url"],
+                "artist_url": info["uploader_url"],
+            }
+        )
+        if info
+        else None
+    )
 
 
-def search_yt_list(search_method: str, message: discord.Message) -> Generator[TrackInfo, None, None]:
+def search_yt_list(
+    search_method: str, message: discord.Message
+) -> Generator[TrackInfo, None, None]:
     logger.info("playlist yt")
     with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
@@ -52,21 +59,25 @@ def search_yt_list(search_method: str, message: discord.Message) -> Generator[Tr
         except Exception:
             info = ydl.extract_info(search_method, download=False)
     for info in infos:
-        yield TrackInfo({
-            "source": info["formats"][0]["url"],
-            "meta": {
-                "title": info["title"],
-                "artist": info["uploader"],
-                "thumbnail": info["thumbnails"][-1]["url"],
-                "requested_by": message.author,
-                "requested_at": message.created_at
-            },
-            "track_url": info["webpage_url"],
-            "artist_url": info["uploader_url"],
-        })
+        yield TrackInfo(
+            {
+                "source": info["formats"][0]["url"],
+                "meta": {
+                    "title": info["title"],
+                    "artist": info["uploader"],
+                    "thumbnail": info["thumbnails"][-1]["url"],
+                    "requested_by": message.author,
+                    "requested_at": message.created_at,
+                },
+                "track_url": info["webpage_url"],
+                "artist_url": info["uploader_url"],
+            }
+        )
 
 
-def get_vk_album(owner_id: int, id: int, key, message: discord.Message) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(
+    owner_id: int, id: int, key, message: discord.Message
+) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -97,23 +108,27 @@ def get_vk_single(id: str | None, message: discord.Message) -> TrackInfo | None:
     audio = api.method("audio.getById", audios=id)
     if len(audio) == 0:
         return None
-    return TrackInfo({
-        "source": audio[0]["url"],
-        "meta": {
-            "title": audio[0]["title"],
-            "artist": audio[0]["artist"],
-            "thumbnail": audio[0]["album"]["thumb"]["photo_1200"]
-            if "album" in audio[0]
-            else None,
-            "requested_by": message.author,
-            "requested_at": message.created_at
-        },
-        "track_url": audio[0]["url"],
-        "artist_url": audio[0]["url"],
-    })
+    return TrackInfo(
+        {
+            "source": audio[0]["url"],
+            "meta": {
+                "title": audio[0]["title"],
+                "artist": audio[0]["artist"],
+                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"]
+                if "album" in audio[0]
+                else None,
+                "requested_by": message.author,
+                "requested_at": message.created_at,
+            },
+            "track_url": audio[0]["url"],
+            "artist_url": audio[0]["url"],
+        }
+    )
 
 
-async def define_stream_method(item: str, search_platform: SearchPlatform, message: discord.Message) -> list[TrackInfo | None]:
+async def define_stream_method(
+    item: str, search_platform: SearchPlatform, message: discord.Message
+) -> list[TrackInfo | None]:
     yt = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9]+)", item
     )

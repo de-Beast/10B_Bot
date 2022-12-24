@@ -1,16 +1,14 @@
-import os
-from typing import Optional
-
 import discord
-from discord.ext import bridge  # type: ignore
+from discord.ext import bridge
 from loguru import logger
 
-import MongoDB as mdb
-from enums import ThreadType
-from MongoDB import DataBase, MusicRoomInfo
+from config import get_config
 
-from . import Utils  # type: ignore
-from .room.Handlers import MainMessageHandler, ThreadHandler  # type: ignore
+from .. import MongoDB as mdb
+from ..enums import ThreadType
+from ..MongoDB import DataBase, MusicRoomInfo
+from . import Utils
+from .room.Handlers import MainMessageHandler, ThreadHandler
 
 
 async def update_music_rooms_db(client: bridge.Bot):
@@ -36,7 +34,11 @@ def check_room_correctness(guild: discord.Guild, coll) -> MusicRoomInfo | None:
             return None
 
         for thread_key, thread_id in info["threads"].items():
-            if isinstance(thread_key, str) and not ThreadType.get_key(thread_key) or thread_id not in (thread.id for thread in music_room.threads):
+            if (
+                isinstance(thread_key, str)
+                and not ThreadType.get_key(thread_key)
+                or thread_id not in (thread.id for thread in music_room.threads)
+            ):
                 return None
 
         return mdb.convert_music_room_info(info, for_storage=False)
@@ -49,7 +51,9 @@ async def create_music_room(
     old_room = Utils.get_music_room(guild)
     if old_room:
         await old_room.delete()
-    room = await guild.create_text_channel(name=os.getenv("ROOM_NAME", "Missing-name"), position=0)
+    room = await guild.create_text_channel(
+        name=get_config().get("ROOM_NAME", "Missing-name"), position=0
+    )
     threads = await create_threads(client, room)
     view = MainMessageHandler.create_main_view()
     message = await room.send(

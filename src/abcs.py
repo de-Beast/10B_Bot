@@ -1,5 +1,5 @@
 from abc import ABC, ABCMeta, abstractmethod
-
+from typing import Self
 import discord
 from discord import ui
 from discord.ext import bridge, commands
@@ -43,7 +43,7 @@ class ViewABC(ABC, ui.View):
 
     @classmethod
     @abstractmethod
-    def from_message(cls, child_cls, message: discord.Message):  # type: ignore
+    def from_message(cls, child_cls, message: discord.Message) -> Self:  # type: ignore
         base_view = super().from_message(message, timeout=None)
         cls.__view_children_items__ = []
         return child_cls(*base_view.children)
