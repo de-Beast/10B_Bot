@@ -45,7 +45,7 @@ class Track:
     requested_at: datetime.datetime
 
     @classmethod
-    async def from_dict(cls, data: TrackInfo) -> "Track":
+    async def from_dict(cls, data: TrackInfo) -> Self: # type: ignore[valid-type]
         src_url = data["source"]
         src = await discord.FFmpegOpusAudio.from_probe(data["source"], **FFMPEG_OPTIONS)
         title = data["meta"]["title"]

@@ -2,9 +2,8 @@ import sys
 from typing import TYPE_CHECKING
 from loguru import logger
 
+
 from src.Bot import TenB_Bot
-from config import get_config
-from src.vk_api import get_api
 
 if TYPE_CHECKING:
     from src.vk_api import Api
@@ -29,6 +28,9 @@ def main(discord_token: str | None):
 
 
 if __name__ == "__main__":
+    from config import get_config
+    from src.vk_api import get_api
+
     config: dict = get_config(sys.argv[1])
     api: "Api" = get_api(config.get("VKADMIN_TOKEN"))
     main(config.get("DISCORD_TOKEN"))

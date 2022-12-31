@@ -3,21 +3,26 @@ from time import sleep
 from typing import Generator
 
 import discord
-import youtube_dl # type: ignore
+import yt_dlp # type: ignore
 from loguru import logger
 
 from ...vk_api import get_api
-from config import get_config
 
 from ...enums import SearchPlatform
 from .Track import TrackInfo
 
 YDL_OPTIONS = {
-    **get_config()["YT"],
-    "format": "bestaudio/best",
+    "format": "m4a/bestaudio/best",
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'm4a',
+    }],
     "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
+    "compat_opts": [
+        "no-youtube-unavailable-videos"
+    ],
     "extractaudio": True,
-    "noplaylist": False,
+    "noplaylist": True,
     "writethumbnails": True,
     "source_address": "0.0.0.0",
     "nocheckcertificate": True,
@@ -26,19 +31,19 @@ YDL_OPTIONS = {
 
 def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo | None:
     logger.info("single yt")
-    with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
-            info = ydl.extract_info(search_method, download=False)["entries"][0]
+            info = ydl.sanitize_info(ydl.extract_info(search_method, download=False))["entries"][0]
         except Exception:
-            info = ydl.extract_info(search_method, download=False)
+            info = ydl.sanitize_info(ydl.extract_info(search_method, download=False))
     return (
         TrackInfo(
             {
-                "source": info["formats"][0]["url"],
+                "source": info["url"],
                 "meta": {
                     "title": info["title"],
                     "artist": info["uploader"],
-                    "thumbnail": info["thumbnails"][-1]["url"],
+                    "thumbnail": info["thumbnail"],
                     "requested_by": message.author,
                     "requested_at": message.created_at,
                 },
@@ -51,23 +56,23 @@ def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo 
     )
 
 
-def search_yt_list(
-    search_method: str, message: discord.Message
-) -> Generator[TrackInfo, None, None]:
+def search_yt_list(search_method: str, message: discord.Message) -> Generator[TrackInfo, None, None]:
     logger.info("playlist yt")
-    with youtube_dl.YoutubeDL(YDL_OPTIONS) as ydl:
+    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
-            infos = ydl.extract_info(search_method, download=False)["entries"]
+            infos = ydl.sanitize_info(ydl.extract_info(search_method, download=False))["entries"]
         except Exception:
-            info = ydl.extract_info(search_method, download=False)
+            info = ydl.sanitize_info(ydl.extract_info(search_method, download=False))
     for info in infos:
         yield TrackInfo(
             {
-                "source": info["formats"][0]["url"],
+                # "source": info["formats"][0]["url"],
+                "source": info["url"],
                 "meta": {
                     "title": info["title"],
                     "artist": info["uploader"],
-                    "thumbnail": info["thumbnails"][-1]["url"],
+                    # "thumbnail": info["thumbnails"][-1]["url"],
+                    "thumbnail": info["thumbnail"],
                     "requested_by": message.author,
                     "requested_at": message.created_at,
                 },
@@ -77,9 +82,7 @@ def search_yt_list(
         )
 
 
-def get_vk_album(
-    owner_id: int, id: int, key, message: discord.Message
-) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(owner_id: int, id: int, key, message: discord.Message) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -132,7 +135,7 @@ async def define_stream_method(
     item: str, search_platform: SearchPlatform, message: discord.Message
 ) -> list[TrackInfo | None]:
     yt = fullmatch(
-        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9]+)", item
+        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9_-]+)(&list=[a-zA-Z0-9]+&index=\d+)?", item
     )
     yt_list = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",

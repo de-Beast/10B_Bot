@@ -13,7 +13,6 @@ from .Track import Track, TrackInfo
 
 TIMEOUT = 60
 
-
 def _notify_and_close_condition(cond: Condition):
     with cond:
         cond.notify_all()
