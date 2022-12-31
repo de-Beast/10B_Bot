@@ -1,9 +1,10 @@
+from typing import Any
 import os
 import dotenv
 from src.enums import Configuration
 
 
-def get_config(configuration: str = "prod") -> dict[str, str]:
+def get_config(configuration: str = "prod") -> dict[str, Any]:
     if "config" not in globals():
         globals()["config"] = {}
         config: dict = globals()["config"]
@@ -23,6 +24,10 @@ def get_config(configuration: str = "prod") -> dict[str, str]:
                 config["ROOM_NAME"] = "10B-classroom"
         config["VKADMIN_TOKEN"] = os.getenv("VKADMIN_TOKEN")
         config["MONGODB_URL"] = os.getenv("MONGODB_URL")
+        config["YT"] = {
+            "username": os.getenv("YT_USERNAME"),
+            "password": os.getenv("YT_PASSWORD"),
+        }
 
     return globals()["config"].copy()
 

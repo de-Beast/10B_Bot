@@ -7,11 +7,13 @@ import youtube_dl # type: ignore
 from loguru import logger
 
 from ...vk_api import get_api
+from config import get_config
 
 from ...enums import SearchPlatform
 from .Track import TrackInfo
 
 YDL_OPTIONS = {
+    **get_config()["YT"],
     "format": "bestaudio/best",
     "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
     "extractaudio": True,
