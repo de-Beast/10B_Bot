@@ -3,12 +3,12 @@ from time import sleep
 from typing import Generator
 
 import discord
-import yt_dlp # type: ignore
+import yt_dlp  # type: ignore
 from loguru import logger
 
-from ...vk_api import get_api
-
-from ...enums import SearchPlatform
+# from ...enums import SearchPlatform
+from src.enums import SearchPlatform
+from src.vk_api import get_api
 from .Track import TrackInfo
 
 YDL_OPTIONS = {
@@ -66,12 +66,10 @@ def search_yt_list(search_method: str, message: discord.Message) -> Generator[Tr
     for info in infos:
         yield TrackInfo(
             {
-                # "source": info["formats"][0]["url"],
                 "source": info["url"],
                 "meta": {
                     "title": info["title"],
                     "artist": info["uploader"],
-                    # "thumbnail": info["thumbnails"][-1]["url"],
                     "thumbnail": info["thumbnail"],
                     "requested_by": message.author,
                     "requested_at": message.created_at,

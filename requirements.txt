@@ -4,7 +4,7 @@ py-cord[voice]==2.3.2
 py-cord[speed]==2.3.2
 pymongo==4.3.3
 pymongo[srv]==4.3.3
-yt-dlp==2022.11.11
+yt-dlp==2023.1.2
 ytdlp-plugins==2022.12.17
 ffmpeg==1.4
 ffprobe==0.5

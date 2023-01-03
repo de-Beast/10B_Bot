@@ -5,11 +5,11 @@ import discord
 from discord.ext import bridge, commands
 from loguru import logger
 
-from ..abcs import MusicCogABC
-from ..enums import Loop, SearchPlatform, ThreadType
+from src.abcs import MusicCogABC
+from src.enums import Loop, SearchPlatform, ThreadType
 from . import Utils
 from .player import MusicPlayer
-from .room.Handlers import MainMessageHandler, ThreadHandler
+from .room.Handlers import MainMessageHandler, SettingsThreadHandler
 
 ############################## Checks ###################################
 
@@ -28,7 +28,7 @@ def is_connected():  # TODO  Проверка на подключение к к�
 
 
 class MusicPlayerCog(MusicCogABC):
-
+    
     ############################## Commands #################################
 
     # GROUP - PLAY
@@ -69,7 +69,7 @@ class MusicPlayerCog(MusicCogABC):
                 return
             if (thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS)) is not None:
                 search_platform: SearchPlatform = (
-                    await ThreadHandler.SettingsThreadHandler(thread).search_platform
+                    await SettingsThreadHandler(thread).search_platform
                 )
             await player.add_query(query, search_platform, ctx.message)
         try:

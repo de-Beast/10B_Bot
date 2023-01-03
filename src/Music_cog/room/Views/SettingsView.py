@@ -1,10 +1,10 @@
-from ....abcs import ViewABC
+from src.abcs import ViewABC
 from typing import Self
 
 import discord
 from discord import ui
 
-from ....enums import SearchPlatform
+from src.enums import SearchPlatform
 
 
 class SettingsView(ViewABC):

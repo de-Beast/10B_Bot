@@ -1,10 +1,11 @@
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Self
+from typing import TYPE_CHECKING, Self
+
 import discord
 from discord import ui
 from discord.ext import bridge, commands
 from loguru import logger
-
+from . import Bot
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):
     pass
@@ -12,10 +13,10 @@ class CogABCMeta(discord.cog.CogMeta, ABCMeta):
 
 class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
 
-    _client: bridge.Bot
+    _client: Bot.TenB_Bot
 
     @property
-    def client(self) -> bridge.Bot:
+    def client(self) -> Bot.TenB_Bot:
         return MusicCogABC._client
 
     async def invoke_command(self, ctx: bridge.BridgeExtContext, name: str):
@@ -35,10 +36,10 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
 
 class ViewABC(ABC, ui.View):
 
-    _client: bridge.Bot
+    _client: Bot.TenB_Bot
 
     @property
-    def client(self) -> bridge.Bot:
+    def client(self) -> Bot.TenB_Bot:
         return ViewABC._client
 
     @classmethod
@@ -51,7 +52,7 @@ class ViewABC(ABC, ui.View):
 
 class HandlerABC(ABC):
 
-    _client: bridge.Bot
+    _client: Bot.TenB_Bot
 
     @property
     def client(self):

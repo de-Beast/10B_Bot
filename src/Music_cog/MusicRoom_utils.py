@@ -4,11 +4,11 @@ from loguru import logger
 
 from config import get_config
 
-from .. import MongoDB as mdb
-from ..enums import ThreadType
-from ..MongoDB import DataBase, MusicRoomInfo
+from src import MongoDB as mdb
+from src.enums import ThreadType
+from src.MongoDB import DataBase, MusicRoomInfo
 from . import Utils
-from .room.Handlers import MainMessageHandler, ThreadHandler
+from .room.Handlers import MainMessageHandler, SettingsThreadHandler
 
 
 async def update_music_rooms_db(client: bridge.Bot):
@@ -78,7 +78,7 @@ async def create_threads(
         thread.slowmode_delay = 21600
         match thread_type:
             case ThreadType.SETTINGS:
-                view = ThreadHandler.SettingsThreadHandler.create_settings_view()
+                view = SettingsThreadHandler.create_settings_view()
                 message = await thread.send(content="Search Platform", view=view)
                 client.add_view(view, message_id=message.id)
         threads_ids.append((thread_type, thread.id))

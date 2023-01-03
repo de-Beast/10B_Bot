@@ -2,8 +2,8 @@ import discord
 from discord.ext import bridge, commands
 from discord.ext.pages import Page, Paginator
 from loguru import logger
+
 from config import get_config
-from .Music_cog import setup_music_cogs
 
 
 class TenB_Bot(bridge.Bot):
@@ -12,10 +12,14 @@ class TenB_Bot(bridge.Bot):
             command_prefix=get_config().get("PREFIX"), intents=discord.Intents.all()
         )
         # Init Music modules
+        from .Music_cog import setup_music_cogs
+
         setup_music_cogs(self)
 
     async def when_ready(self):
-        logger.info("Guild list::{guilds}", guilds = [str(guild) for guild in self.guilds])
+        logger.info(
+            "Guild list::{guilds}", guilds=[str(guild) for guild in self.guilds]
+        )
         logger.success("Bot is ready")
 
     @commands.command(name="test")
