@@ -1,4 +1,5 @@
-from ..abcs import MusicCogABC
+from src.Bot import TenB_Bot
+from src.abcs import MusicCogABC
 from typing import Any
 
 import discord
@@ -6,13 +7,13 @@ from discord.ext import bridge, commands, tasks
 from loguru import logger
 
 from config import get_config
-from ..MongoDB import DataBase
+from src.MongoDB import DataBase
 
 from . import MusicRoom_utils as mrUtils
 from . import Utils
 from .player import MusicPlayer
 from .room import Handlers
-from .room.Handlers import MainMessageHandler, ThreadHandler
+from .room.Handlers import MainMessageHandler
 
 
 class MusicRoomCog(MusicCogABC):
@@ -84,7 +85,7 @@ class MusicRoomCog(MusicCogABC):
                 await self.clear_room(ctx.guild)
 
     @commands.Cog.listener("on_ready")
-    async def check_music_rooms_in_guilds(self):
+    async def check_music_rooms_in_guilds_on_ready(self):
         await mrUtils.update_music_rooms_db(self.client)
         for guild in self.client.guilds:
             try:
@@ -93,7 +94,7 @@ class MusicRoomCog(MusicCogABC):
                 )
                 handler.update_main_view()
                 await handler.update_embed(guild)
-                await ThreadHandler.update_threads_views(guild)
+                await Handlers.update_threads_views(guild)
             except Exception as e:
                 logger.error(f"{e}")
         await self.client.when_ready()
@@ -131,6 +132,6 @@ class MusicRoomCog(MusicCogABC):
                     await handler.update_embed(member.guild)
 
 
-def setup(client: bridge.Bot):
+def setup(client: TenB_Bot):
     Handlers.setup(client)
     client.add_cog(MusicRoomCog(client))

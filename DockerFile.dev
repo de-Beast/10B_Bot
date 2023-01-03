@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+RUN apt-get -y update
+RUN apt-get install -y --no-install-recommends ffmpeg
+
+WORKDIR /usr/src/app
+COPY . .
+RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt
+
+EXPOSE 5000
+
+CMD ["python", "./Main.py", "dev"]

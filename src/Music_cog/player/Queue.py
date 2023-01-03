@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from ...enums import Loop, Shuffle, ThreadType
-from ...Music_cog import Utils
-from ...Music_cog.room import Handlers as Handlers
+from src.enums import Loop, Shuffle, ThreadType
+from src.Music_cog import Utils
+from src.Music_cog.room import Handlers
 
 from .Track import Track
 
 if TYPE_CHECKING:
-    from ...Music_cog.room.Handlers import QueueThreadHandler
+    from src.Music_cog.room.Handlers import QueueThreadHandler
+
 
 class SimpleQueue(deque):
     def __init__(self) -> None:
@@ -36,7 +37,7 @@ class SimpleQueue(deque):
                 self.new_track = True
             else:
                 if handler is not None:
-                    await handler.send_track(track)
+                    await handler.send_track_message(track)
                 self.append(track)
 
     def prepare_prev_track(self):
@@ -56,13 +57,15 @@ class SimpleQueue(deque):
                 case Loop.NOLOOP:
                     self._current_track = self.popleft()
                     if loop and handler is not None:
-                        loop.create_task(handler.remove_track())
+                        loop.create_task(handler.remove_track_message())
                 case Loop.LOOP:
                     if self._current_track is not None:
                         self.append(self._current_track)
                         if loop and handler is not None:
                             loop.create_task(
-                                handler.send_track(self._current_track, is_looping=True)
+                                handler.send_track_message(
+                                    self._current_track, is_looping=True
+                                )
                             )
                     self._current_track = self.popleft()
             self.new_track = True
@@ -119,7 +122,7 @@ class Queue(SimpleQueue):
 
     async def clear(self):
         super().clear()
-        await self._handler.remove_track(all=True)
+        await self._handler.remove_track_message(all=True)
         if self.__shuffle is not Shuffle.NOSHUFFLE:
             self.__shuffled_queue.clear()
             self.__shuffle = Shuffle.NOSHUFFLE

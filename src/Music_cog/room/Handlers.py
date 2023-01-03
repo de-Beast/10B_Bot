@@ -2,13 +2,14 @@ import random
 from typing import Any, Self, Union
 
 import discord
-from discord.ext import bridge
 from loguru import logger
 
-from ...abcs import HandlerABC, ThreadHandlerABC
-from ...enums import SearchPlatform, Shuffle, ThreadType
-from ...Music_cog import Utils
-from ...Music_cog.player.Track import Track
+from src.abcs import HandlerABC, ThreadHandlerABC
+from src.Bot import TenB_Bot
+from src.enums import SearchPlatform, Shuffle, ThreadType
+from src.Music_cog import Utils
+from src.Music_cog.player.Track import Track
+
 from .message_config import conf
 from .Views import MainView, SettingsView, setup_view_client
 
@@ -37,7 +38,7 @@ def rofl(requester: Union[discord.User, discord.Member]) -> str:
     return rofl_str
 
 
-def setup(client: bridge.Bot):
+def setup(client: TenB_Bot):
     setup_view_client(client)
     HandlerABC._client = client
 
@@ -206,7 +207,9 @@ class SettingsThreadHandler(ThreadHandlerABC):
 
 
 class QueueThreadHandler(ThreadHandlerABC):
-    async def send_track(self, track: Track, /, *, is_looping: bool = False) -> None:
+    async def send_track_message(
+        self, track: Track, /, *, is_looping: bool = False
+    ) -> None:
         embed = MessageHandler.create_embed_from_track(track)
         async for message in self.thread.history(oldest_first=True):
             if message.author == self.client.user:
@@ -218,22 +221,16 @@ class QueueThreadHandler(ThreadHandlerABC):
         if not is_looping:
             await self.thread.send(embed=embed)
 
-    async def remove_track(self, /, *, all: bool = False) -> None:
+    async def remove_track_message(self, /, *, all: bool = False) -> None:
         await self.thread.purge(
             limit=1 if not all else None, check=lambda m: m.author == self.client.user
         )
 
 
-class ThreadHandler:
-
-    SettingsThreadHandler = SettingsThreadHandler
-    QueueThreadHandler = QueueThreadHandler
-
-    @staticmethod
-    async def update_threads_views(guild: discord.Guild):
-        for thread_type in ThreadType:
-            match thread_type:
-                case ThreadType.SETTINGS:
-                    await SettingsThreadHandler(
-                        Utils.get_thread(guild, thread_type)
-                    ).update_thread_views()
+async def update_threads_views(guild: discord.Guild):
+    for thread_type in ThreadType:
+        match thread_type:
+            case ThreadType.SETTINGS:
+                await SettingsThreadHandler(
+                    Utils.get_thread(guild, thread_type)
+                ).update_thread_views()

@@ -1,12 +1,13 @@
 import discord
-from discord import ui
 from discord.ext import bridge, commands
 from loguru import logger
 
-from ..enums import ThreadType
+from src.abcs import MusicCogABC
+from src.enums import ThreadType
 
-from ..abcs import MusicCogABC
 from . import Utils
+from .room import Handlers
+from .room.Handlers import QueueThreadHandler, SettingsThreadHandler
 
 
 class MusicThreadCog(MusicCogABC):
@@ -29,6 +30,18 @@ class MusicThreadCog(MusicCogABC):
                         await thread.purge(check=lambda m: m.author != self.client.user)
                     except Exception:
                         logger.error("Deleting messages error")
+
+    @commands.Cog.listener("on_ready")
+    async def clear_threads_on_ready(self):
+        for guild in self.client.guilds:
+            try:
+                handler = QueueThreadHandler(Utils.get_thread(guild, ThreadType.QUEUE))
+                await handler.thread.purge(limit=None)
+                
+                handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
+                await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
+            except Exception as e:
+                logger.error(f"{e}")
 
 
 def setup(client: bridge.Bot):

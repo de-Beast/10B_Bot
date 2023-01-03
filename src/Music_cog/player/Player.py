@@ -5,14 +5,13 @@ import discord
 from discord.ext import bridge, tasks
 from loguru import logger
 
-from ...enums import Loop, SearchPlatform, Shuffle
+from src.enums import Loop, SearchPlatform, Shuffle
 
 from . import Player_utils as plUtils
 from .Queue import Queue
 from .Track import Track, TrackInfo
 
 TIMEOUT = 60
-
 
 def _notify_and_close_condition(cond: Condition):
     with cond:
@@ -63,16 +62,12 @@ class MusicPlayer(discord.VoiceClient):
     async def play_next(self, loop: asyncio.AbstractEventLoop):
         cond = Condition()
 
-        async def _wait_for_end(
-            cond: Condition, loop: asyncio.AbstractEventLoop
-        ) -> None:
+        async def _wait_for_end(cond: Condition, loop: asyncio.AbstractEventLoop) -> None:
             with cond:
                 cond.wait()
                 await self.__queue.update_queue(loop)
 
-        self.play(
-            self._playing_track.src, after=lambda x: _notify_and_close_condition(cond)  # type: ignore
-        )
+        self.play(self._playing_track.src, after=lambda x: _notify_and_close_condition(cond))  # type: ignore    
         self.__queue.new_track = False
         self.pause()
         await asyncio.sleep(1)
