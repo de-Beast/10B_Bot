@@ -4,10 +4,10 @@ py-cord[voice]
 py-cord[speed]
 pymongo
 pymongo[srv]
-yt-dlp
 ytdlp-plugins
 ffmpeg
 ffprobe
 requests
 loguru
 python-dotenv
+yt-dlp
