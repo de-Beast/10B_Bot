@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Self
+from typing import Any, Self
 
 
 class Configuration(Enum):
@@ -7,9 +7,11 @@ class Configuration(Enum):
     PROD: str = "prod"
 
     @classmethod
-    def get_key(cls, config: str) -> Self:  # type: ignore[valid-type]
-        conf = [c for c in cls if c.value == config][0]
-        return conf if conf else cls.DEV
+    def get_key(cls, config: str | Any) -> Self:
+        for conf in cls:
+            if conf.value == config:
+                return conf
+        return cls["DEV"]
 
 
 class Loop(Enum):
@@ -18,9 +20,11 @@ class Loop(Enum):
     ONE = "Loop One"
 
     @classmethod
-    def get_key(cls, looping: str) -> Self:  # type: ignore[valid-type]
-        loop = [loop for loop in cls if loop.value == looping][0]
-        return loop if loop else cls.NOLOOP
+    def get_key(cls, looping: str | Any) -> Self:
+        for loop in cls:
+            if loop.value == looping:
+                return loop
+        return cls["NOLOOP"]
 
 
 class Shuffle(Enum):
@@ -29,9 +33,11 @@ class Shuffle(Enum):
     SECRET: str = "Secret Shuffle"
 
     @classmethod
-    def get_key(cls, shuffle: str) -> Self:  # type: ignore[valid-type]
-        shuf = [shuf for shuf in cls if shuf.value == shuffle][0]
-        return shuf if shuf else cls.NOSHUFFLE
+    def get_key(cls, shuffle: str | Any) -> Self:
+        for shuf in cls:
+            if shuf.value == shuffle:
+                return shuf
+        return cls["NOSHUFFLE"]
 
 
 class ThreadType(Enum):
@@ -39,8 +45,11 @@ class ThreadType(Enum):
     SETTINGS: str = "settings_id"
 
     @classmethod
-    def get_key(cls, thread_type: str) -> Self | None:  # type: ignore[valid-type]
-        return [thread for thread in cls if thread.value == thread_type][0]
+    def get_key(cls, thread_type: str | Any) -> Self | None:
+        for thread in cls:
+            if thread.value == thread_type:
+                return thread
+        return None
 
 
 class SearchPlatform(Enum):
@@ -50,6 +59,8 @@ class SearchPlatform(Enum):
     SOUNDCLOUD: str = "soundcloud"
 
     @classmethod
-    def get_key(cls, platform: str) -> Self:  # type: ignore[valid-type]
-        plat: SearchPlatform = [plat for plat in cls if plat.value == platform][0]
-        return plat if plat else cls.YOUTUBE
+    def get_key(cls, platform: str | Any) -> Self:
+        for plat in cls:
+            if plat.value == platform:
+                return plat
+        return cls["YOUTUBE"]

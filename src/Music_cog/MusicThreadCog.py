@@ -2,15 +2,26 @@ import discord
 from discord.ext import bridge, commands
 from loguru import logger
 
-from src.abcs import MusicCogABC
+from src.ABC import MusicCogABC
 from src.enums import ThreadType
 
 from . import Utils
-from .room import Handlers
 from .room.Handlers import QueueThreadHandler, SettingsThreadHandler
 
 
 class MusicThreadCog(MusicCogABC):
+    async def clear_room_from_reactions(self, guild: discord.Guild):
+        threads = [Utils.get_thread(guild, thread_type) for thread_type in ThreadType]
+        for thread in threads:
+            if thread:
+                try:
+                    async for message in thread.history(oldest_first=True):
+                        await message.clear_reactions()
+                except discord.Forbidden as e:
+                    logger.error("No permissions: ", e)
+                except discord.HTTPException as e:
+                    logger.error("HTTP Error: ", e)
+                    
     ############################ Commands ###############################
 
     # @commands.slash_command(name="swap")
@@ -42,6 +53,21 @@ class MusicThreadCog(MusicCogABC):
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
             except Exception as e:
                 logger.error(f"{e}")
+            finally:
+                await self.clear_room_from_reactions(guild)
+    
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def clear_reactions_on_reaction_add(self, raw_reaction: discord.RawReactionActionEvent):
+        if not raw_reaction.member:
+            return
+        
+        thread = raw_reaction.member.guild.get_thread(raw_reaction.channel_id)
+        if not isinstance(thread, discord.Thread):
+            return
+        
+        if thread.parent == Utils.get_music_room(thread.guild):
+            message: discord.Message = await thread.fetch_message(raw_reaction.message_id)
+            await message.clear_reactions()
 
 
 def setup(client: bridge.Bot):

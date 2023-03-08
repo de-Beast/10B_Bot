@@ -1,4 +1,4 @@
-from src.abcs import ViewABC
+from src.ABC import ViewABC
 from src.Bot import TenB_Bot
 
 from .MainView import MainView

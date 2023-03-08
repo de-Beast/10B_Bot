@@ -1,18 +1,19 @@
 from abc import ABC, ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 import discord
 from discord import ui
 from discord.ext import bridge, commands
 from loguru import logger
+
 from . import Bot
+
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):
     pass
 
 
 class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
-
     _client: Bot.TenB_Bot
 
     @property
@@ -35,8 +36,8 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
 
 
 class ViewABC(ABC, ui.View):
-
     _client: Bot.TenB_Bot
+    __view_children_items__ = []
 
     @property
     def client(self) -> Bot.TenB_Bot:
@@ -44,14 +45,22 @@ class ViewABC(ABC, ui.View):
 
     @classmethod
     @abstractmethod
-    def from_message(cls, child_cls, message: discord.Message) -> Self:  # type: ignore
-        base_view = super().from_message(message, timeout=None)
-        cls.__view_children_items__ = []
-        return child_cls(*base_view.children)
+    def from_message(cls, message: discord.Message, /, *, timeout: float | None = None) -> Self:
+        view = cls(timeout=timeout)
+        view.clear_items()
+        for component in ui.view._walk_all_components(message.components):
+            view.add_item(ui.view._component_to_item(component))
+        view.message = message
+        return view
+        # base_view = super().from_message(message, timeout=timeout)
+        # view = cls(timeout=timeout)
+        # view.clear_items()
+        # for item in base_view.children:
+        #     view.add_item(item)
+        # return view
 
 
 class HandlerABC(ABC):
-
     _client: Bot.TenB_Bot
 
     @property

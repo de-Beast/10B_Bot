@@ -2,40 +2,36 @@ from re import fullmatch
 from time import sleep
 from typing import Generator
 
-import discord
-import yt_dlp  # type: ignore
+import yt_dlp as ytdl # type: ignore
 from loguru import logger
 
-# from ...enums import SearchPlatform
 from src.enums import SearchPlatform
 from src.vk_api import get_api
+
 from .Track import TrackInfo
 
 YDL_OPTIONS = {
-    "format": "m4a/bestaudio/best",
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'm4a',
-    }],
+    "format": "bestaudio/best",
     "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
-    "compat_opts": [
-        "no-youtube-unavailable-videos"
-    ],
     "extractaudio": True,
-    "noplaylist": True,
+    "noplaylist": False,
     "writethumbnails": True,
     "source_address": "0.0.0.0",
     "nocheckcertificate": True,
 }
 
 
-def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo | None:
+def search_yt_single(search_method: str, request_data: dict) -> TrackInfo | None:
     logger.info("single yt")
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-        try:
-            info = ydl.sanitize_info(ydl.extract_info(search_method, download=False))["entries"][0]
-        except Exception:
-            info = ydl.sanitize_info(ydl.extract_info(search_method, download=False))
+    with ytdl.YoutubeDL(YDL_OPTIONS) as ydl:
+        infos: dict = ydl.extract_info(search_method, download=False)
+        info = infos.get("entries", infos)
+        if isinstance(info, list):
+            if len(info) > 0:
+                info = info[0]
+            else:
+                info = None
+
     return (
         TrackInfo(
             {
@@ -44,8 +40,8 @@ def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo 
                     "title": info["title"],
                     "artist": info["uploader"],
                     "thumbnail": info["thumbnail"],
-                    "requested_by": message.author,
-                    "requested_at": message.created_at,
+                    "requested_by": request_data["author"],
+                    "requested_at": request_data["created_at"],
                 },
                 "track_url": info["webpage_url"],
                 "artist_url": info["uploader_url"],
@@ -56,23 +52,25 @@ def search_yt_single(search_method: str, message: discord.Message) -> TrackInfo 
     )
 
 
-def search_yt_list(search_method: str, message: discord.Message) -> Generator[TrackInfo, None, None]:
+def search_yt_list(
+    search_method: str, request_data: dict
+) -> Generator[TrackInfo, None, None]:
     logger.info("playlist yt")
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+    with ytdl.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
-            infos = ydl.sanitize_info(ydl.extract_info(search_method, download=False))["entries"]
+            infos = ydl.extract_info(search_method, download=False)["entries"]
         except Exception:
-            info = ydl.sanitize_info(ydl.extract_info(search_method, download=False))
+            info = ydl.extract_info(search_method, download=False)
     for info in infos:
         yield TrackInfo(
             {
-                "source": info["url"],
+                "source": info["formats"][0]["url"],
                 "meta": {
                     "title": info["title"],
                     "artist": info["uploader"],
-                    "thumbnail": info["thumbnail"],
-                    "requested_by": message.author,
-                    "requested_at": message.created_at,
+                    "thumbnail": info["thumbnails"][-1]["url"],
+                    "requested_by": request_data["author"],
+                    "requested_at": request_data["created_at"],
                 },
                 "track_url": info["webpage_url"],
                 "artist_url": info["uploader_url"],
@@ -80,14 +78,16 @@ def search_yt_list(search_method: str, message: discord.Message) -> Generator[Tr
         )
 
 
-def get_vk_album(owner_id: int, id: int, key, message: discord.Message) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(
+    owner_id: int, id: int, key, request_data: dict
+) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
     if audios["count"] == 0:
         yield None
     for aud in audios["items"]:
-        a = get_vk_single(f"{aud['owner_id']}_{aud['id']}", message)
+        a = get_vk_single(f"{aud['owner_id']}_{aud['id']}", request_data)
         if not a:
             print(a)
             sleep(10)
@@ -103,7 +103,7 @@ def search_vk(name: str) -> str | None:
     return f"{audio['items'][0]['owner_id']}_{audio['items'][0]['id']}"
 
 
-def get_vk_single(id: str | None, message: discord.Message) -> TrackInfo | None:
+def get_vk_single(id: str | None, request_data: dict) -> TrackInfo | None:
     logger.info("single vk")
     if not id:
         return None
@@ -120,8 +120,8 @@ def get_vk_single(id: str | None, message: discord.Message) -> TrackInfo | None:
                 "thumbnail": audio[0]["album"]["thumb"]["photo_1200"]
                 if "album" in audio[0]
                 else None,
-                "requested_by": message.author,
-                "requested_at": message.created_at,
+                "requested_by": request_data["author"],
+                "requested_at": request_data["created_at"],
             },
             "track_url": audio[0]["url"],
             "artist_url": audio[0]["url"],
@@ -130,10 +130,10 @@ def get_vk_single(id: str | None, message: discord.Message) -> TrackInfo | None:
 
 
 async def define_stream_method(
-    item: str, search_platform: SearchPlatform, message: discord.Message
+    item: str, search_platform: SearchPlatform, request_data: dict
 ) -> list[TrackInfo | None]:
     yt = fullmatch(
-        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9_-]+)(&list=[a-zA-Z0-9]+&index=\d+)?", item
+        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-]+)", item
     )
     yt_list = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",
@@ -150,17 +150,17 @@ async def define_stream_method(
             item,
         )
     if yt:
-        return [search_yt_single(yt[0], message)]
+        return [search_yt_single(yt[0], request_data)]
     if yt_list:
-        return list(search_yt_list(yt_list[0], message))
+        return list(search_yt_list(yt_list[0], request_data))
     if vk:
-        return [get_vk_single(vk[1], message)]
+        return [get_vk_single(vk[1], request_data)]
     if vk_list:
         key = vk_list[3] if len(vk_list.groups()) > 2 else None
-        return list(get_vk_album(vk_list[1], vk_list[2], key, message))  # type: ignore
+        return list(get_vk_album(vk_list[1], vk_list[2], key, request_data))  # type: ignore
     match search_platform:
         case SearchPlatform.YOUTUBE:
-            return [search_yt_single("ytsearch:" + item, message)]
+            return [search_yt_single("ytsearch:" + item, request_data)]
         case SearchPlatform.VK:
-            return [get_vk_single(search_vk(item), message)]
+            return [get_vk_single(search_vk(item), request_data)]
     return [None]

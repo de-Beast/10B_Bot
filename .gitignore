@@ -10,7 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.code-workspace
-
+pyproject.toml
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

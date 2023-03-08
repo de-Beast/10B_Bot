@@ -1,14 +1,13 @@
 import discord
 from discord.ext import bridge
-from loguru import logger
 
 from config import get_config
-
 from src import MongoDB as mdb
 from src.enums import ThreadType
 from src.MongoDB import DataBase, MusicRoomInfo
+
 from . import Utils
-from .room.Handlers import MainMessageHandler, SettingsThreadHandler
+from .room.Handlers import PlayerMessageHandler, SettingsThreadHandler
 
 
 async def update_music_rooms_db(client: bridge.Bot):
@@ -55,9 +54,9 @@ async def create_music_room(
         name=get_config().get("ROOM_NAME", "Missing-name"), position=0
     )
     threads = await create_threads(client, room)
-    view = MainMessageHandler.create_main_view()
+    view = PlayerMessageHandler.create_main_view()
     message = await room.send(
-        embed=MainMessageHandler.create_embed(guild),
+        embed=PlayerMessageHandler.create_embed(guild),
         view=view,
     )
     client.add_view(view, message_id=message.id)

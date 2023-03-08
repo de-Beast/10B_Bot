@@ -15,7 +15,7 @@ class MusicRoomInfo(TypedDict):
 
 
 class DataBase:
-    __instance: Self | None = None  # type: ignore[valid-type]
+    __instance: Self | None = None
     __database: Any = None
 
     def __new__(cls):
@@ -27,7 +27,7 @@ class DataBase:
         return cls.__instance
 
     @property
-    def music_rooms_collection(self):
+    def music_rooms_collection(self) -> Any:
         match get_config().get("CONFIGURATION"):
             case Configuration.PROD:
                 return self.__database.Music_rooms

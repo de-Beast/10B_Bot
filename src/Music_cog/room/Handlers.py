@@ -1,24 +1,27 @@
 import random
-from typing import Any, Self, Union
+from typing import TYPE_CHECKING, Any, Self
 
 import discord
 from loguru import logger
 
-from src.abcs import HandlerABC, ThreadHandlerABC
+from src.ABC import HandlerABC, ThreadHandlerABC
 from src.Bot import TenB_Bot
 from src.enums import SearchPlatform, Shuffle, ThreadType
 from src.Music_cog import Utils
 from src.Music_cog.player.Track import Track
 
-from .message_config import conf
+from .message_config import message_config
 from .Views import MainView, SettingsView, setup_view_client
 
+if TYPE_CHECKING:
+    pass
 
-def rofl(requester: Union[discord.User, discord.Member]) -> str:
+
+def rofl(requester: discord.User | discord.Member) -> str:
     rofl_str = " – "
     match requester.id:
         case 447849746586140672:
-            rofl_str = random.choice(("ПОПУЩЕНЕЦ", "ОБСОСИК", "БЕРСЕРК ГАВНИЩЕ ЕБУЧЕЕ"))
+            rofl_str += random.choice(("ПОПУЩЕНЕЦ", "ОБСОСИК", "БЕРСЕРК ГАВНИЩЕ ЕБУЧЕЕ"))
         case 446753575465385998:
             rofl_str += random.choice(
                 (
@@ -28,14 +31,10 @@ def rofl(requester: Union[discord.User, discord.Member]) -> str:
                 )
             )
         case 309011989286354944:
-            rofl_str += random.choice(
-                ("МОЯ СЛАДЕНЬКАЯ БУЛОЧКА", "АНИМЕШНИК", "ТРАХНИ МЕНЯ")
-            )
+            rofl_str += random.choice(("МОЯ СЛАДЕНЬКАЯ БУЛОЧКА", "АНИМЕШНИК", "ТРАХНИ МЕНЯ"))
         case 600361186495692801:
-            rofl_str += random.choice(
-                ("ЛУЧШИЙ В МИРЕ", "СПАСИБО ЗА БОТА", "АПНУЛ ВТОРУЮ ПЛАТИНУ")
-            )
-    return rofl_str
+            rofl_str += random.choice(("ЛУЧШИЙ В МИРЕ", "СПАСИБО ЗА БОТА", "АПНУЛ ВТОРУЮ ПЛАТИНУ"))
+    return rofl_str if len(rofl_str) > 3 else ""
 
 
 def setup(client: TenB_Bot):
@@ -49,9 +48,7 @@ def create_default_embed_properties(guild: discord.Guild | None = None) -> dict:
         description = "|"
         for thread_type in ThreadType:
             thread = Utils.get_thread(guild, thread_type)
-            description += (
-                f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
-            )
+            description += f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
         properties.update(description=description)
     return properties
 
@@ -65,12 +62,12 @@ class MessageHandler(HandlerABC):
         return self.__message
 
     @staticmethod
-    def create_embed_from_track(track: Track) -> discord.Embed:
+    def create_embed_from_track(track: Track, number: int) -> discord.Embed:
         settings = {
             "title": track.title,
             "timestamp": str(track.requested_at),
             "url": track.track_url,
-            "author": {"name": track.artist, "url": track.artist_url},
+            "author": {"name": f"{number}. {track.artist}", "url": track.artist_url},
             "description": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
                             <t:{track.requested_at.timestamp().__ceil__()}:R>",
         }
@@ -86,7 +83,7 @@ class MessageHandler(HandlerABC):
         return next_embed
 
 
-class MainMessageHandler(MessageHandler):
+class PlayerMessageHandler(MessageHandler):
     @property
     def looping(self):
         return MainView.from_message(self.message).looping
@@ -96,10 +93,7 @@ class MainMessageHandler(MessageHandler):
         return MainView.from_message(self.message).shuffle
 
     @classmethod
-    async def with_message_from_room(cls, room: discord.TextChannel | None) -> Self | None:  # type: ignore[valid-type]
-        if room is None:
-            return None
-
+    async def with_message_from_room(cls, room: discord.TextChannel) -> Self | None:
         message = await cls.get_main_message(room)
         return cls(message) if message else None
 
@@ -117,15 +111,11 @@ class MainMessageHandler(MessageHandler):
     def create_main_view() -> MainView:
         return MainView()
 
-    def update_main_view(self):
+    async def update_main_view(self):
+        backed_view = MainView.from_message(self.message)
+        backed_view.set_to_default_view()
+        await self.message.edit(view=backed_view)
         self.client.add_view(MainView(), message_id=self.message.id)
-
-    @staticmethod
-    def create_file(
-        path: str = "Music_cog/room/other_files/banner.gif",
-        name: str = "Banner.gif",
-    ) -> discord.File:
-        return discord.File(open(path, "rb"), filename=name)
 
     @staticmethod
     def create_embed(
@@ -145,7 +135,7 @@ class MainMessageHandler(MessageHandler):
         if settings is None:
             settings = {
                 "title": "Queue is clear",
-                "image": {"url": conf["back_image"]},
+                "image": {"url": message_config["back_image"]},
             }
         default_properties = create_default_embed_properties(guild)
         settings.update(default_properties, footer={"text": footer})
@@ -185,13 +175,9 @@ class MainMessageHandler(MessageHandler):
 class SettingsThreadHandler(ThreadHandlerABC):
     @property
     async def search_platform(self) -> SearchPlatform:
-        thread_message: discord.Message | None = await self.get_thread_message(
-            self.thread
-        )
+        thread_message: discord.Message | None = await self.get_thread_message(self.thread)
         return (
-            SettingsView.from_message(thread_message).search_platform  # type: ignore[attr-defined]
-            if thread_message is not None
-            else SearchPlatform.YOUTUBE
+            SettingsView.from_message(thread_message).search_platform if thread_message is not None else SearchPlatform.YOUTUBE
         )
 
     @staticmethod
@@ -207,30 +193,39 @@ class SettingsThreadHandler(ThreadHandlerABC):
 
 
 class QueueThreadHandler(ThreadHandlerABC):
-    async def send_track_message(
-        self, track: Track, /, *, is_looping: bool = False
-    ) -> None:
-        embed = MessageHandler.create_embed_from_track(track)
-        async for message in self.thread.history(oldest_first=True):
-            if message.author == self.client.user:
-                handler = MessageHandler(message)
-                try:
-                    embed = await handler.update_embed_with_embed(embed)
-                except discord.NotFound:
-                    pass
-        if not is_looping:
-            await self.thread.send(embed=embed)
+    async def send_track_message(self, track: Track, track_number: int, /, *, is_loop: bool = False) -> None:
+        if is_loop:
+            await self.thread.purge(limit=1, check=lambda m: m.author == self.client.user, oldest_first=True)
+            await self.update_track_numbers()
+
+        embed = MessageHandler.create_embed_from_track(track, track_number)
+        await self.thread.send(embed=embed)
 
     async def remove_track_message(self, /, *, all: bool = False) -> None:
         await self.thread.purge(
-            limit=1 if not all else None, check=lambda m: m.author == self.client.user
+            limit=1 if not all else None,
+            check=lambda m: m.author == self.client.user,
+            oldest_first=True,
         )
+        if not all:
+            await self.update_track_numbers()
+
+    async def update_track_numbers(self) -> None:
+        counter = 1
+        async for message in self.thread.history(oldest_first=True):
+            if message.author == self.client.user:
+                embed = message.embeds[0]
+                embed.set_author(
+                    name=f"{counter}. {embed.author.name.split()[1]}",
+                    url=embed.author.url,
+                    icon_url=embed.author.icon_url,
+                )
+                await message.edit(embed=embed)
+                counter += 1
 
 
 async def update_threads_views(guild: discord.Guild):
     for thread_type in ThreadType:
         match thread_type:
             case ThreadType.SETTINGS:
-                await SettingsThreadHandler(
-                    Utils.get_thread(guild, thread_type)
-                ).update_thread_views()
+                await SettingsThreadHandler(Utils.get_thread(guild, thread_type)).update_thread_views()
