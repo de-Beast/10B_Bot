@@ -1,6 +1,6 @@
 import datetime
 from dataclasses import dataclass
-from typing import Self, TypedDict, Union
+from typing import Self, TypedDict
 
 import discord
 
@@ -11,7 +11,7 @@ FFMPEG_OPTIONS = {
 				-reconnect_at_eof 1 \
 				-reconnect_delay_max 2",
     "options": "-vn\
-                -bufsize 8192",
+                -bufsize 16384",
 }
 
 
@@ -41,11 +41,11 @@ class Track:
     track_url: str
     artist_url: str
 
-    requested_by: Union[discord.User, discord.Member]
+    requested_by: discord.User | discord.Member
     requested_at: datetime.datetime
 
     @classmethod
-    async def from_dict(cls, data: TrackInfo) -> Self: # type: ignore[valid-type]
+    async def from_dict(cls, data: TrackInfo) -> Self:
         src_url = data["source"]
         src = await discord.FFmpegOpusAudio.from_probe(data["source"], **FFMPEG_OPTIONS)
         title = data["meta"]["title"]
@@ -68,7 +68,7 @@ class Track:
         )
 
     @classmethod
-    async def from_track(cls, track: Self | None) -> Self | None: # type: ignore[valid-type]
+    async def from_track(cls, track: Self | None) -> Self | None:
         if isinstance(track, Track):
             src = await discord.FFmpegOpusAudio.from_probe(
                 track.src_url, **FFMPEG_OPTIONS

@@ -1,4 +1,4 @@
-from src.abcs import MusicCogABC
+from src.ABC import MusicCogABC
 
 from . import MusicPlayerCog, MusicRoomCog, MusicThreadCog
 

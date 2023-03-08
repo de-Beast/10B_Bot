@@ -1,48 +1,44 @@
-from src.Bot import TenB_Bot
-from src.abcs import MusicCogABC
-from typing import Any
-
 import discord
-from discord.ext import bridge, commands, tasks
+from discord.ext import bridge, commands
 from loguru import logger
 
 from config import get_config
+from src.ABC import MusicCogABC
+from src.Bot import TenB_Bot
 from src.MongoDB import DataBase
 
 from . import MusicRoom_utils as mrUtils
 from . import Utils
-from .player import MusicPlayer
 from .room import Handlers
-from .room.Handlers import MainMessageHandler
+from .room.Handlers import PlayerMessageHandler
 
 
 class MusicRoomCog(MusicCogABC):
-    @tasks.loop(seconds=1)
-    async def display_playing_track(
-        self, room: discord.TextChannel, player: MusicPlayer
-    ):
-        try:
-            track = player.track
-        except Exception:
-            track = None
-        if self.display_playing_track.__getattribute__("track") != track:
-            self.display_playing_track.__setattr__("track", track)
-            handler = await MainMessageHandler.with_message_from_room(room)
-            if handler:
-                await handler.update_embed(
-                    room.guild, track, player.shuffle if track is not None else None
-                )
-
-    async def clear_room(self, guild: discord.Guild):
+    async def clear_room_from_user_messages(self, guild: discord.Guild):
         room = Utils.get_music_room(guild)
+        if not room:
+            return
+        
         try:
-            while len(await room.history(oldest_first=True).flatten()) > 3:  # type: ignore
-                try:
-                    await room.purge(check=lambda m: m.author != self.client.user)  # type: ignore
-                except Exception:
-                    logger.error("Deleting messages error")
-        except Exception:
-            logger.error("Unknown Channel")
+            while len(await room.history(oldest_first=True).flatten()) > 3:
+                await room.purge(check=lambda m: m.author != self.client.user)
+        except discord.Forbidden as e:
+            logger.error("No permissions: ", e)
+        except discord.HTTPException as e:
+            logger.error("HTTP Error: ", e)
+            
+    async def clear_room_from_reactions(self, guild: discord.Guild):
+        room = Utils.get_music_room(guild)
+        if not room:
+            return
+        
+        try:
+            async for message in room.history(oldest_first=True):
+                await message.clear_reactions()
+        except discord.Forbidden as e:
+            logger.error("No permissions: ", e)
+        except discord.HTTPException as e:
+            logger.error("HTTP Error: ", e)
 
     ############################## Commands #################################
 
@@ -54,9 +50,7 @@ class MusicRoomCog(MusicCogABC):
         name="create_music_room",
         aliases=["create", "make_room", "create_room", "make_music_room"],
     )
-    @commands.check_any(
-        commands.is_owner(), commands.has_guild_permissions(administrator=True)  # type: ignore
-    )
+    @commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator=True))  # type: ignore
     async def command_create_music_room(self, ctx: commands.Context):
         room_info = await mrUtils.create_music_room(self.client, ctx.guild)
         DataBase().update_room_info(room_info)
@@ -74,62 +68,46 @@ class MusicRoomCog(MusicCogABC):
     @commands.Cog.listener("on_message")
     async def play_music_on_message(self, message: discord.Message):
         if message.author != self.client.user:
-            if message.channel == Utils.get_music_room(
-                message.guild
-            ) and not message.content.startswith(
-                get_config().get("PREFIX", ""), 0, len(get_config().get("PREFIX", ""))
+            prefix: str = get_config().get("PREFIX", "")
+
+            if message.channel == Utils.get_music_room(message.guild) and not message.content.startswith(
+                prefix, 0, len(prefix)
             ):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
                 ctx.args = [message.content]
-                await self.invoke_command(ctx, "play")
-                await self.clear_room(ctx.guild)
+                await self.clear_room_from_user_messages(ctx.guild)
+                try:
+                    await self.invoke_command(ctx, "play")
+                except Exception as e:
+                    print(e)
+
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def clear_reactions_on_reaction_add(self, raw_reaction: discord.RawReactionActionEvent):
+        if not raw_reaction.member:
+            return
+        
+        channel = raw_reaction.member.guild.get_channel(raw_reaction.channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return
+        
+        message: discord.Message = await channel.fetch_message(raw_reaction.message_id)
+        if message.channel == Utils.get_music_room(message.guild):
+            await message.clear_reactions()
 
     @commands.Cog.listener("on_ready")
     async def check_music_rooms_in_guilds_on_ready(self):
         await mrUtils.update_music_rooms_db(self.client)
         for guild in self.client.guilds:
             try:
-                handler = await MainMessageHandler.with_message_from_room(
-                    Utils.get_music_room(guild)
-                )
-                handler.update_main_view()
+                handler = await PlayerMessageHandler.with_message_from_room(Utils.get_music_room(guild))
+                await handler.update_main_view()
                 await handler.update_embed(guild)
                 await Handlers.update_threads_views(guild)
+                await self.clear_room_from_user_messages(guild)
+                await self.clear_room_from_reactions(guild)
             except Exception as e:
                 logger.error(f"{e}")
         await self.client.when_ready()
-
-    @commands.Cog.listener("on_voice_state_update")
-    async def binding_playing_track_view(
-        self,
-        member: discord.Member,
-        before: discord.VoiceState,
-        after: discord.VoiceState,
-    ):
-        if (
-            self.client.user
-            and member.id == self.client.user.id
-            and before.channel != after.channel
-        ):
-            if after.channel is not None:
-                try:
-                    player: MusicPlayer | Any = member.guild.voice_client
-                    if not isinstance(player, MusicPlayer):
-                        raise Exception("Not a Player Class")
-                except Exception as e:
-                    logger.error(e)
-                if not self.display_playing_track.is_running():
-                    self.display_playing_track.__setattr__("track", None)
-                    self.display_playing_track.start(
-                        Utils.get_music_room(member.guild), player
-                    )
-            else:
-                self.display_playing_track.cancel()
-                handler = await MainMessageHandler.with_message_from_room(
-                    Utils.get_music_room(member.guild)
-                )
-                if handler:
-                    await handler.update_embed(member.guild)
 
 
 def setup(client: TenB_Bot):

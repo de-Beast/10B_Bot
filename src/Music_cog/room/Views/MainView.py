@@ -1,18 +1,17 @@
-from src.abcs import ViewABC
-from typing import Any
+from typing import Any, Self
 
 import discord
 from discord import ui
 
+from src.ABC import ViewABC
+from src.enums import Loop, Shuffle
 from src.Music_cog import player as plr
 from src.Music_cog.room import Handlers as Handlers
-from src.enums import Loop, Shuffle
-from src.Music_cog import Utils
 
 
 class MainView(ViewABC):
-    def __init__(self, *items: ui.Item):
-        super().__init__(*items, timeout=None)
+    def __init__(self, *items: ui.Item, timeout=None, disable_on_timeout=False):
+        super().__init__(*items, timeout=timeout, disable_on_timeout=disable_on_timeout)
         self.__looping: Loop = Loop.NOLOOP
         self.__shuffle: Shuffle = Shuffle.NOSHUFFLE
 
@@ -25,37 +24,50 @@ class MainView(ViewABC):
         return self.__shuffle
 
     @classmethod
-    def from_message(cls, message: discord.Message) -> "MainView":  # type: ignore
-        view: MainView = super().from_message(cls, message)
+    def from_message(cls, message: discord.Message, /, *, timeout: float | None = None) -> Self:
+        view: Self = super().from_message(message, timeout=timeout)
         for item in view.children:
-            match item.custom_id:  # type: ignore
+            if not isinstance(item, ui.Select):
+                continue
+
+            match item.custom_id:
                 case "Loop Select":
-                    for option in item.options:  # type: ignore
+                    for option in item.options:
                         if option.default:
                             view.__looping = Loop.get_key(option.value)
+
                 case "Shuffle Select":
-                    for option in item.options:  # type: ignore
+                    for option in item.options:
                         if option.default:
                             view.__shuffle = Shuffle.get_key(option.value)
         return view
 
-    @ui.button(
-        custom_id="Prev Button", emoji="⏮️", style=discord.ButtonStyle.primary, row=0
-    )  # prev
-    async def prev(self, button: ui.Button, interaction: discord.Interaction):
+    def set_to_default_view(self, only_play_pause_button: bool = False) -> None:
+        for item in self.children:
+            if isinstance(item, ui.Button) and item.custom_id == "Pause Resume Button":
+                item.emoji = discord.PartialEmoji.from_str("⏸️")
+            elif isinstance(item, ui.Select) and item.custom_id == "Shuffle Select":
+                if not only_play_pause_button:
+                    item.options[0].default = True
+
+    @ui.button(custom_id="Prev Button", emoji="⏮️", style=discord.ButtonStyle.primary, row=0)  # prev
+    async def prev_callback(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
             if isinstance(player, plr.MusicPlayer):
                 player.prev()
+                self.set_to_default_view(only_play_pause_button=True)
+                await interaction.response.edit_message(view=self)
+                return
         await interaction.response.defer()
 
     @ui.button(
         custom_id="Pause Resume Button",
-        emoji="⏸",
+        emoji="⏸️",
         style=discord.ButtonStyle.success,
         row=0,
     )  # paly / pause
-    async def pause_resume(self, button: ui.Button, interaction: discord.Interaction):
+    async def pause_resume_callback(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
             if isinstance(player, plr.MusicPlayer):
@@ -68,14 +80,15 @@ class MainView(ViewABC):
                 return
         await interaction.response.defer()
 
-    @ui.button(
-        custom_id="Next Button", emoji="⏭️", style=discord.ButtonStyle.primary, row=0
-    )  # next
-    async def next(self, button: ui.Button, interaction: discord.Interaction):
+    @ui.button(custom_id="Next Button", emoji="⏭️", style=discord.ButtonStyle.primary, row=0)  # next
+    async def next_callback(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
-            if player is not None:
+            if isinstance(player, plr.MusicPlayer):
                 player.skip()
+                self.set_to_default_view(only_play_pause_button=True)
+                await interaction.response.edit_message(view=self)
+                return
         await interaction.response.defer()
 
     @ui.button(
@@ -84,7 +97,7 @@ class MainView(ViewABC):
         style=discord.ButtonStyle.danger,
         row=0,
     )  # clear list
-    async def clear(self, button: ui.Button, interaction: discord.Interaction):
+    async def clear_callback(self, button: ui.Button, interaction: discord.Interaction):
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
             if isinstance(player, plr.MusicPlayer):
@@ -102,7 +115,7 @@ class MainView(ViewABC):
     )
     async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
         value = select.values[0]
-        self.__looping = Loop.get_key(value)  # type: ignore
+        self.__looping = Loop.get_key(value)
 
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
@@ -129,9 +142,7 @@ class MainView(ViewABC):
             discord.SelectOption(label="Secret Shuffle", emoji="🔒"),  # secret shuffle
         ],
     )
-    async def shuffle_callback(
-        self, select: ui.Select, interaction: discord.Interaction
-    ):
+    async def shuffle_callback(self, select: ui.Select, interaction: discord.Interaction):
         for opt in select.options:
             opt.default = False
         option = select.options[0]
@@ -140,7 +151,7 @@ class MainView(ViewABC):
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
             if isinstance(player, plr.MusicPlayer) and player.has_track:
                 value = select.values[0]
-                self.__shuffle = Shuffle.get_key(value)  # type: ignore
+                self.__shuffle = Shuffle.get_key(value)
 
                 match value:
                     case "No Shuffle":
@@ -152,13 +163,13 @@ class MainView(ViewABC):
                         option.default = True
                 await interaction.response.edit_message(view=self)
                 player.shuffle = self.__shuffle
-                handler = await Handlers.MainMessageHandler.with_message_from_room(
-                    Utils.get_music_room(interaction.guild)
-                )
-                if handler:
-                    await handler.update_embed(
-                        interaction.guild, player.track, self.shuffle
-                    )
+                # handler = await Handlers.PlayerMessageHandler.with_message_from_room(
+                #     Utils.get_music_room(interaction.guild)
+                # )
+                # if handler:
+                #     await handler.update_embed(
+                #         interaction.guild, player.track, self.shuffle
+                #     )
                 return
 
         option.default = True

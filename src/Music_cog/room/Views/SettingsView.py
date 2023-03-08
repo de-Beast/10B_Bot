@@ -1,4 +1,4 @@
-from src.abcs import ViewABC
+from src.ABC import ViewABC
 from typing import Self
 
 import discord
@@ -8,8 +8,8 @@ from src.enums import SearchPlatform
 
 
 class SettingsView(ViewABC):
-    def __init__(self, *items: ui.Item):
-        super().__init__(*items, timeout=None)
+    def __init__(self, *items: ui.Item, timeout=None, disable_on_timeout=False):
+        super().__init__(*items, timeout=timeout, disable_on_timeout=disable_on_timeout)
         self.__search_platform: SearchPlatform = SearchPlatform.YOUTUBE
 
     @property
@@ -17,11 +17,11 @@ class SettingsView(ViewABC):
         return self.__search_platform
 
     @classmethod
-    def from_message(cls, message: discord.Message) -> Self:  # type: ignore
-        view: SettingsView = super().from_message(cls, message)
+    def from_message(cls, message: discord.Message, /, *, timeout: float | None = None) -> Self:
+        view: Self = super().from_message(message, timeout=timeout)
         for item in view.children:
-            if item.custom_id == "Search Platform Select":  # type: ignore
-                for option in item.options:  # type: ignore
+            if isinstance(item, ui.Select) and item.custom_id == "Search Platform Select":
+                for option in item.options:
                     if option.default:
                         view.__search_platform = SearchPlatform.get_key(option.value)
         return view
@@ -31,9 +31,9 @@ class SettingsView(ViewABC):
         row=1,
         options=[
             discord.SelectOption(
-                label="Youtube", value="yt", emoji="🐷", default=True  # Youtube
+                label="Youtube", value=SearchPlatform.YOUTUBE.value, emoji="🐷", default=True  # Youtube
             ),
-            discord.SelectOption(label="VK", value="vk", emoji="🐭"),  # VK
+            discord.SelectOption(label="VK", value=SearchPlatform.VK.value, emoji="🐭"),  # VK
         ],
     )
     async def search_platform_callback(
