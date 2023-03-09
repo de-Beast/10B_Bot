@@ -1,10 +1,10 @@
 import discord
-from discord.ext import bridge
-
 from config import get_config
-from src import MongoDB as mdb
-from src.enums import ThreadType
-from src.MongoDB import DataBase, MusicRoomInfo
+from discord.ext import bridge
+from enums import ThreadType
+from MongoDB import DataBase, MusicRoomInfo
+
+import MongoDB as mdb
 
 from . import Utils
 from .room.Handlers import PlayerMessageHandler, SettingsThreadHandler
@@ -21,14 +21,10 @@ async def update_music_rooms_db(client: bridge.Bot):
 
 
 def check_room_correctness(guild: discord.Guild, coll) -> MusicRoomInfo | None:
-    info: MusicRoomInfo = coll.find_one(
-        {"guild_id": guild.id}, {"_id": 0, "guild_id": 1, "room_id": 1, "threads": 1}
-    )
+    info: MusicRoomInfo = coll.find_one({"guild_id": guild.id}, {"_id": 0, "guild_id": 1, "room_id": 1, "threads": 1})
     if info is not None:
         guild_channel = guild.get_channel(info["room_id"])
-        music_room: discord.TextChannel | None = (
-            guild_channel if isinstance(guild_channel, discord.TextChannel) else None
-        )
+        music_room: discord.TextChannel | None = guild_channel if isinstance(guild_channel, discord.TextChannel) else None
         if music_room is None:
             return None
 
@@ -44,15 +40,11 @@ def check_room_correctness(guild: discord.Guild, coll) -> MusicRoomInfo | None:
     return None
 
 
-async def create_music_room(
-    client: bridge.Bot, guild: discord.Guild
-) -> mdb.MusicRoomInfo:
+async def create_music_room(client: bridge.Bot, guild: discord.Guild) -> mdb.MusicRoomInfo:
     old_room = Utils.get_music_room(guild)
     if old_room:
         await old_room.delete()
-    room = await guild.create_text_channel(
-        name=get_config().get("ROOM_NAME", "Missing-name"), position=0
-    )
+    room = await guild.create_text_channel(name=get_config().get("ROOM_NAME", "Missing-name"), position=0)
     threads = await create_threads(client, room)
     view = PlayerMessageHandler.create_main_view()
     message = await room.send(
@@ -64,9 +56,7 @@ async def create_music_room(
     return DataBase.create_music_room_info(guild, room, threads)
 
 
-async def create_threads(
-    client: bridge.Bot, room: discord.TextChannel
-) -> list[tuple[ThreadType, int]]:
+async def create_threads(client: bridge.Bot, room: discord.TextChannel) -> list[tuple[ThreadType, int]]:
     threads_ids = []
     for thread_type in ThreadType:
         thread = await room.create_thread(

@@ -6,7 +6,7 @@ from discord import ui
 from discord.ext import bridge, commands
 from loguru import logger
 
-from . import Bot
+import Bot
 
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):
