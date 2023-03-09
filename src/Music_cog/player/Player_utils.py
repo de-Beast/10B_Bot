@@ -2,11 +2,10 @@ from re import fullmatch
 from time import sleep
 from typing import Generator
 
-import yt_dlp as ytdl # type: ignore
+import yt_dlp as ytdl  # type: ignore
+from enums import SearchPlatform
 from loguru import logger
-
-from src.enums import SearchPlatform
-from src.vk_api import get_api
+from vk_api import get_api
 
 from .Track import TrackInfo
 
@@ -52,9 +51,7 @@ def search_yt_single(search_method: str, request_data: dict) -> TrackInfo | None
     )
 
 
-def search_yt_list(
-    search_method: str, request_data: dict
-) -> Generator[TrackInfo, None, None]:
+def search_yt_list(search_method: str, request_data: dict) -> Generator[TrackInfo, None, None]:
     logger.info("playlist yt")
     with ytdl.YoutubeDL(YDL_OPTIONS) as ydl:
         try:
@@ -78,9 +75,7 @@ def search_yt_list(
         )
 
 
-def get_vk_album(
-    owner_id: int, id: int, key, request_data: dict
-) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(owner_id: int, id: int, key, request_data: dict) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -117,9 +112,7 @@ def get_vk_single(id: str | None, request_data: dict) -> TrackInfo | None:
             "meta": {
                 "title": audio[0]["title"],
                 "artist": audio[0]["artist"],
-                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"]
-                if "album" in audio[0]
-                else None,
+                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else None,
                 "requested_by": request_data["author"],
                 "requested_at": request_data["created_at"],
             },
@@ -129,12 +122,8 @@ def get_vk_single(id: str | None, request_data: dict) -> TrackInfo | None:
     )
 
 
-async def define_stream_method(
-    item: str, search_platform: SearchPlatform, request_data: dict
-) -> list[TrackInfo | None]:
-    yt = fullmatch(
-        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-]+)", item
-    )
+async def define_stream_method(item: str, search_platform: SearchPlatform, request_data: dict) -> list[TrackInfo | None]:
+    yt = fullmatch(r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-]+)", item)
     yt_list = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",
         item,

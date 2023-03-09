@@ -3,10 +3,10 @@ import random
 from collections import deque
 
 import discord
+from enums import Loop, Shuffle, ThreadType
 
-from src.enums import Loop, Shuffle, ThreadType
-from src.Music_cog import Utils
-from src.Music_cog.room import Handlers
+from Music_cog import Utils
+from Music_cog.room import Handlers
 
 from .Track import Track
 
@@ -14,10 +14,8 @@ from .Track import Track
 class SimpleQueue(deque):
     def __init__(self, guild: discord.Guild) -> None:
         super().__init__()
-        self._handler = Handlers.QueueThreadHandler(
-            Utils.get_thread(guild, ThreadType.QUEUE)
-        )
-        
+        self._handler = Handlers.QueueThreadHandler(Utils.get_thread(guild, ThreadType.QUEUE))
+
         self._current_track: Track | None = None
         self.new_track: bool = False
 
@@ -115,7 +113,9 @@ class Queue(SimpleQueue):
             self.__shuffle = Shuffle.NOSHUFFLE
 
     async def add_track(self, track: Track, *args):
-        await super().add_track(track,)
+        await super().add_track(
+            track,
+        )
         if self.__shuffle is not Shuffle.NOSHUFFLE:
             await self.__shuffled_queue.add_track(track)
 

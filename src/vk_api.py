@@ -13,7 +13,6 @@ class Api:
         self.v = v
         self.session = session()
 
-    #
     def method(self, method: str, **args) -> dict:
         """Send request to vk api method with given args and return answer or None if error"""
         try:
