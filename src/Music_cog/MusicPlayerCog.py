@@ -3,11 +3,10 @@ import datetime
 from typing import Any
 
 import discord
+from ABC import MusicCogABC
 from discord.ext import bridge, commands
+from enums import SearchPlatform, ThreadType
 from loguru import logger
-
-from src.ABC import MusicCogABC
-from src.enums import SearchPlatform, ThreadType
 
 from . import Utils
 from .player import MusicPlayer

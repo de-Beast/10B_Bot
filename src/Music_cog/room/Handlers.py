@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, Any, Self
 import discord
 from loguru import logger
 
-from src.ABC import HandlerABC, ThreadHandlerABC
-from src.Bot import TenB_Bot
-from src.enums import SearchPlatform, Shuffle, ThreadType
-from src.Music_cog import Utils
-from src.Music_cog.player.Track import Track
+from ABC import HandlerABC, ThreadHandlerABC
+from Bot import TenB_Bot
+from enums import SearchPlatform, Shuffle, ThreadType
+from Music_cog import Utils
+from Music_cog.player.Track import Track
 
 from .message_config import message_config
 from .Views import MainView, SettingsView, setup_view_client

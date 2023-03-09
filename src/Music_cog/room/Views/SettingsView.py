@@ -1,10 +1,9 @@
-from src.ABC import ViewABC
 from typing import Self
 
 import discord
+from ABC import ViewABC
 from discord import ui
-
-from src.enums import SearchPlatform
+from enums import SearchPlatform
 
 
 class SettingsView(ViewABC):
@@ -30,17 +29,13 @@ class SettingsView(ViewABC):
         custom_id="Search Platform Select",
         row=1,
         options=[
-            discord.SelectOption(
-                label="Youtube", value=SearchPlatform.YOUTUBE.value, emoji="🐷", default=True  # Youtube
-            ),
+            discord.SelectOption(label="Youtube", value=SearchPlatform.YOUTUBE.value, emoji="🐷", default=True),  # Youtube
             discord.SelectOption(label="VK", value=SearchPlatform.VK.value, emoji="🐭"),  # VK
         ],
     )
-    async def search_platform_callback(
-        self, select: ui.Select, interaction: discord.Interaction
-    ):
+    async def search_platform_callback(self, select: ui.Select, interaction: discord.Interaction):
         value = select.values[0]
-        self.__search_platform = SearchPlatform.get_key(value)  # type: ignore
+        self.__search_platform = SearchPlatform.get_key(value)
         for option in select.options:
             if option.value == value:
                 option.default = True
