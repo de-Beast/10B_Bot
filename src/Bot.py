@@ -12,7 +12,7 @@ class TenB_Bot(bridge.Bot):
             command_prefix=get_config().get("PREFIX"), intents=discord.Intents.all()
         )
         # Init Music modules
-        from .Music_cog import setup_music_cogs
+        from Music_cog import setup_music_cogs
 
         setup_music_cogs(self)
 

@@ -5,8 +5,6 @@ py-cord[speed]
 pymongo
 pymongo[srv]
 ytdlp-plugins
-ffmpeg
-ffprobe
 requests
 loguru
 python-dotenv

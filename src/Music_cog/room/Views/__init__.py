@@ -1,5 +1,5 @@
-from src.ABC import ViewABC
-from src.Bot import TenB_Bot
+from ABC import ViewABC
+from Bot import TenB_Bot
 
 from .MainView import MainView
 from .SettingsView import SettingsView

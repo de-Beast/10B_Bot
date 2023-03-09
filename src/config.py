@@ -1,7 +1,7 @@
 from typing import Any
 import os
 import dotenv
-from src.enums import Configuration
+from enums import Configuration
 
 
 def get_config(configuration: str = "prod") -> dict[str, Any]:
@@ -34,4 +34,5 @@ def get_config(configuration: str = "prod") -> dict[str, Any]:
 
 
 if __name__ == "config":
-    dotenv.load_dotenv(".env")
+    dotenv.load_dotenv(dotenv.find_dotenv())
+    

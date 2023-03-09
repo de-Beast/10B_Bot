@@ -1,12 +1,11 @@
 from typing import Any, Self
 
 import discord
+from ABC import ViewABC
 from discord import ui
-
-from src.ABC import ViewABC
-from src.enums import Loop, Shuffle
-from src.Music_cog import player as plr
-from src.Music_cog.room import Handlers as Handlers
+from enums import Loop, Shuffle
+from Music_cog import player as plr
+from Music_cog.room import Handlers as Handlers
 
 
 class MainView(ViewABC):

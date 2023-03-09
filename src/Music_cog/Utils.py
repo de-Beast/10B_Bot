@@ -2,11 +2,10 @@ from typing import TYPE_CHECKING
 
 import discord
 from loguru import logger
-
-from src.MongoDB import DataBase
+from MongoDB import DataBase
 
 if TYPE_CHECKING:
-    from src.enums import ThreadType
+    from enums import ThreadType
 
 
 def get_music_room(guild: discord.Guild | None) -> discord.TextChannel | None:
@@ -18,9 +17,7 @@ def get_music_room(guild: discord.Guild | None) -> discord.TextChannel | None:
     return None
 
 
-def get_thread(
-    guild: discord.Guild | None, thread_type: "ThreadType"
-) -> discord.Thread | None:
+def get_thread(guild: discord.Guild | None, thread_type: "ThreadType") -> discord.Thread | None:
     threads_ids = DataBase().get_threads_ids(guild) if guild else None
     if threads_ids and guild:
         return guild.get_thread(threads_ids[thread_type])

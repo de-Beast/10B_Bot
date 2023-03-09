@@ -1,12 +1,8 @@
 import sys
-from typing import TYPE_CHECKING
+
 from loguru import logger
 
-
-from src.Bot import TenB_Bot
-
-if TYPE_CHECKING:
-    from src.vk_api import Api
+from Bot import TenB_Bot
 
 # TODO:
 # [x] Разбить код на файлы
@@ -29,8 +25,8 @@ def main(discord_token: str | None):
 
 if __name__ == "__main__":
     from config import get_config
-    from src.vk_api import get_api
+    from vk_api import get_api
 
     config: dict = get_config(sys.argv[1])
-    api: "Api" = get_api(config.get("VKADMIN_TOKEN"))
+    get_api(config.get("VKADMIN_TOKEN"))
     main(config.get("DISCORD_TOKEN"))
