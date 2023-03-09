@@ -3,8 +3,9 @@ RUN apt-get -y update
 RUN apt-get install -y --no-install-recommends ffmpeg
 
 WORKDIR /usr/src/app
-COPY . .
-RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt
+COPY requirements.txt .
+COPY src/ .
+RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 5000
 
