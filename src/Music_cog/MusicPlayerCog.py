@@ -65,10 +65,6 @@ class MusicPlayerCog(MusicCogABC):
             search_platform: SearchPlatform = await SettingsThreadHandler(thread).search_platform
         request_data: dict = {"author": ctx.author, "created_at": datetime.datetime.now(tz=datetime.timezone.utc)}
         await player.add_query(query, search_platform, request_data)
-        try:
-            await ctx.delete()
-        except discord.NotFound:
-            pass
 
     @play.before_invoke
     async def connection_to_voice_channel(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
@@ -96,8 +92,7 @@ class MusicPlayerCog(MusicCogABC):
                             )
                     return False
             elif ctx.voice_client is None:
-                player = await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
-                await player.post_init()
+                await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
             elif ctx.author.voice.channel != ctx.voice_client.channel:
                 most_authoritative_role: discord.Role | None = None
                 if isinstance(ctx.voice_client, MusicPlayer) and isinstance(
@@ -110,10 +105,8 @@ class MusicPlayerCog(MusicCogABC):
                     if most_authoritative_role <= ctx.author.top_role:
                         await ctx.voice_client.disconnect()
                         await asyncio.sleep(1)
-                        player = await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
-                        player.post_init()
+                        await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
                     else:
-                        message = "The member with more authoritative role is currently using the bot"
                         await ctx.respond(message, delete_after=5)
                         return False
         except (commands.BotMissingPermissions, commands.BotMissingAnyRole):

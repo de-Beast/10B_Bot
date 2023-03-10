@@ -19,7 +19,7 @@ class MusicRoomCog(MusicCogABC):
             return
 
         try:
-            while len(await room.history(oldest_first=True).flatten()) > 3:
+            while sum(map(lambda m: m.author != self.client.user, await room.history(oldest_first=True).flatten())):
                 await room.purge(check=lambda m: m.author != self.client.user)
         except discord.Forbidden as e:
             logger.error("No permissions: ", e)
@@ -50,7 +50,7 @@ class MusicRoomCog(MusicCogABC):
         aliases=["create", "make_room", "create_room", "make_music_room"],
     )
     @commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator=True))  # type: ignore
-    async def command_create_music_room(self, ctx: commands.Context):
+    async def create_music_room_command(self, ctx: commands.Context):
         room_info = await mrUtils.create_music_room(self.client, ctx.guild)
         DataBase().update_room_info(room_info)
 
@@ -66,7 +66,7 @@ class MusicRoomCog(MusicCogABC):
 
     @commands.Cog.listener("on_message")
     async def play_music_on_message(self, message: discord.Message):
-        if message.author != self.client.user:
+        if message.author != self.client.user and message.guild:
             prefix: str = get_config().get("PREFIX", "")
 
             if message.channel == Utils.get_music_room(message.guild) and not message.content.startswith(
@@ -74,11 +74,11 @@ class MusicRoomCog(MusicCogABC):
             ):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
                 ctx.args = [message.content]
-                await self.clear_room_from_user_messages(ctx.guild)
                 try:
                     await self.invoke_command(ctx, "play")
                 except Exception as e:
                     print(e)
+            await self.clear_room_from_user_messages(message.guild)
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def clear_reactions_on_reaction_add(self, raw_reaction: discord.RawReactionActionEvent):
@@ -98,12 +98,12 @@ class MusicRoomCog(MusicCogABC):
         await mrUtils.update_music_rooms_db(self.client)
         for guild in self.client.guilds:
             try:
+                await self.clear_room_from_user_messages(guild)
+                await self.clear_room_from_reactions(guild)
                 handler = await PlayerMessageHandler.with_message_from_room(Utils.get_music_room(guild))
                 await handler.update_main_view()
                 await handler.update_embed(guild)
                 await Handlers.update_threads_views(guild)
-                await self.clear_room_from_user_messages(guild)
-                await self.clear_room_from_reactions(guild)
             except Exception as e:
                 logger.error(f"{e}")
         await self.client.when_ready()
