@@ -2,11 +2,10 @@ import random
 from typing import TYPE_CHECKING, Any, Self
 
 import discord
-from loguru import logger
-
 from ABC import HandlerABC, ThreadHandlerABC
 from Bot import TenB_Bot
 from enums import SearchPlatform, Shuffle, ThreadType
+from loguru import logger
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
@@ -62,12 +61,13 @@ class MessageHandler(HandlerABC):
         return self.__message
 
     @staticmethod
-    def create_embed_from_track(track: Track, number: int) -> discord.Embed:
+    def create_embed_from_track(track: Track, number: int | None = None) -> discord.Embed:
         settings = {
             "title": track.title,
             "timestamp": str(track.requested_at),
             "url": track.track_url,
-            "author": {"name": f"{number}. {track.artist}", "url": track.artist_url},
+            "author": {"name": f"{number}. {track.artist}" if number else f"{track.artist}",
+                       "url": track.artist_url},
             "description": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
                             <t:{track.requested_at.timestamp().__ceil__()}:R>",
         }
@@ -91,16 +91,21 @@ class PlayerMessageHandler(MessageHandler):
     @property
     def shuffle(self):
         return MainView.from_message(self.message).shuffle
+    
+    @property
+    def channel(self):
+        return self.message.channel
 
     @classmethod
-    async def with_message_from_room(cls, room: discord.TextChannel) -> Self | None:
-        message = await cls.get_main_message(room)
-        return cls(message) if message else None
+    async def with_message_from_room(cls, room: discord.TextChannel | None) -> Self | None:
+        if room:
+            message = await cls.get_main_message(room)
+        return cls(message) if room and message else None
 
     @staticmethod
     async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
-            async for message in room.history(limit=3, oldest_first=True):
+            async for message in room.history(limit=1):
                 if len(message.embeds) > 0:
                     return message
         except Exception as e:
@@ -181,6 +186,14 @@ class SettingsThreadHandler(ThreadHandlerABC):
         )
 
     @staticmethod
+    async def get_thread_message(thread: discord.Thread) -> discord.Message | None:
+        try:
+            return (await thread.history(limit=1, oldest_first=True).flatten())[0]
+        except Exception as e:
+            logger.warning("NO THREAD MESSAGE FOR U @", e)
+            return None
+
+    @staticmethod
     def create_settings_view() -> SettingsView:
         return SettingsView()
 
@@ -224,8 +237,15 @@ class QueueThreadHandler(ThreadHandlerABC):
                 counter += 1
 
 
+class HistoryThreadHandler(ThreadHandlerABC):
+        async def store_track_in_history(self, track: Track) -> None:
+            embed = MessageHandler.create_embed_from_track(track)
+            await self.thread.send(embed=embed)
+
+
 async def update_threads_views(guild: discord.Guild):
     for thread_type in ThreadType:
         match thread_type:
             case ThreadType.SETTINGS:
-                await SettingsThreadHandler(Utils.get_thread(guild, thread_type)).update_thread_views()
+                if thread := Utils.get_thread(guild, thread_type):
+                    await SettingsThreadHandler(thread).update_thread_views()
