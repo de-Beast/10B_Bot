@@ -1,10 +1,11 @@
 import discord
-from ABC import MusicCogABC
-from Bot import TenB_Bot
-from config import get_config
 from discord.ext import bridge, commands
 from loguru import logger
+
+from ABC import MusicCogABC
+from Bot import TenB_Bot
 from MongoDB import DataBase
+from config import get_config
 
 from . import MusicRoom_utils as mrUtils
 from . import Utils
@@ -69,9 +70,9 @@ class MusicRoomCog(MusicCogABC):
         if message.author != self.client.user and message.guild:
             prefix: str = get_config().get("PREFIX", "")
 
-            if message.channel == Utils.get_music_room(message.guild) and not message.content.startswith(
-                prefix, 0, len(prefix)
-            ):
+            if message.channel == Utils.get_music_room(message.guild) \
+                and not message.content.startswith(prefix, 0, len(prefix)):
+            # if message.channel == Utils.get_music_room(message.guild):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
                 ctx.args = [message.content]
                 try:
