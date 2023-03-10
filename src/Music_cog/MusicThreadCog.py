@@ -5,7 +5,7 @@ from enums import ThreadType
 from loguru import logger
 
 from . import Utils
-from .room.Handlers import QueueThreadHandler, SettingsThreadHandler
+from .room.Handlers import HistoryThreadHandler, QueueThreadHandler, SettingsThreadHandler
 
 
 class MusicThreadCog(MusicCogABC):
@@ -49,6 +49,9 @@ class MusicThreadCog(MusicCogABC):
                 await handler.thread.purge(limit=None)
 
                 handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
+                await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
+                
+                handler = HistoryThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
             except Exception as e:
                 logger.error(f"{e}")

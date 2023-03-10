@@ -3,9 +3,9 @@ from threading import Condition, Thread
 
 import discord
 from discord.ext import bridge, tasks
+from enums import Loop, SearchPlatform, Shuffle
 from loguru import logger
 
-from enums import Loop, SearchPlatform, Shuffle
 from Music_cog import Utils
 from Music_cog.room.Handlers import PlayerMessageHandler
 
@@ -29,18 +29,11 @@ class MusicPlayer(discord.VoiceClient):
         self._queue: Queue = Queue(channel.guild)
         self._playing_track = None
 
-        self._handler: PlayerMessageHandler
         self._inited = False
 
-    async def post_init(self):
-        if self._inited:
-            return
-
-        self._handler = await PlayerMessageHandler.with_message_from_room(Utils.get_music_room(self.guild))
-        if self._handler:
-            self.looping = self._handler.looping
-
-        self._inited = True
+    @property
+    async def _player_message_handler(self) -> PlayerMessageHandler | None:
+        return await PlayerMessageHandler.with_message_from_room(Utils.get_music_room(self.guild))
 
     @property
     def has_track(self) -> bool:
@@ -110,7 +103,8 @@ class MusicPlayer(discord.VoiceClient):
     async def _add_tracks_to_queue(self, tracks_all_meta: list[TrackInfo | None]) -> None:
         if len(tracks_all_meta) == 1 and None in tracks_all_meta:
             logger.error("No tracks to add to queue")
-            await self._handler.message.channel.send("No tracks were found", delete_after=5)
+            if handler := await self._player_message_handler:
+                await handler.channel.send("No tracks were found", delete_after=5)
             return
         for track_all_meta in tracks_all_meta:
             if not track_all_meta:
@@ -136,11 +130,13 @@ class MusicPlayer(discord.VoiceClient):
     async def play_music(self):
         if self._queue.current_track is None:
             self._playing_track = None
-            await self._handler.update_embed(self.guild, self.track, self.shuffle)
+            if handler := await self._player_message_handler:
+                await handler.update_embed(self.guild, self.track, self.shuffle)
             self.play_music.cancel()
         elif self._queue.new_track:
             self._playing_track = await self.track.copy()
-            await self._handler.update_embed(self.guild, self.track, self.shuffle)
+            if handler := await self._player_message_handler:
+                await handler.update_embed(self.guild, self.track, self.shuffle)
             await self.play_next(self.play_music.loop)
 
     @tasks.loop(seconds=5)

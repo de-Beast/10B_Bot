@@ -6,7 +6,7 @@ import discord
 from enums import Loop, Shuffle, ThreadType
 
 from Music_cog import Utils
-from Music_cog.room import Handlers
+from Music_cog.room.Handlers import HistoryThreadHandler, QueueThreadHandler
 
 from .Track import Track
 
@@ -14,12 +14,23 @@ from .Track import Track
 class SimpleQueue(deque):
     def __init__(self, guild: discord.Guild) -> None:
         super().__init__()
-        self._handler = Handlers.QueueThreadHandler(Utils.get_thread(guild, ThreadType.QUEUE))
-
+        self.guild = guild
         self._current_track: Track | None = None
         self.new_track: bool = False
 
         self._looping: Loop = Loop.NOLOOP
+
+    @property
+    def _queue_handler(self) -> QueueThreadHandler | None:
+        if thread := Utils.get_thread(self.guild, ThreadType.QUEUE):
+            return QueueThreadHandler(thread)
+        return None
+
+    @property
+    def _history_handler(self) -> HistoryThreadHandler | None:
+        if thread := Utils.get_thread(self.guild, ThreadType.HISTORY):
+            return HistoryThreadHandler(thread)
+        return None
 
     def clear(self):
         super().clear()
@@ -32,8 +43,11 @@ class SimpleQueue(deque):
                 self._current_track = track
                 self.new_track = True
             else:
-                await self._handler.send_track_message(track, self.__len__() + 1)
+                if q_handler := self._queue_handler:
+                    await q_handler.send_track_message(track, self.__len__() + 1)
                 self.append(track)
+            if h_handler := self._history_handler:
+                await h_handler.store_track_in_history(track)
 
     def prepare_prev_track(self):
         if self._looping is not Loop.ONE:
@@ -47,14 +61,14 @@ class SimpleQueue(deque):
             match self._looping:
                 case Loop.NOLOOP:
                     self._current_track = self.popleft()
-                    if loop:
-                        loop.create_task(self._handler.remove_track_message())
+                    if loop and (handler := self._queue_handler):
+                        loop.create_task(handler.remove_track_message())
                 case Loop.LOOP:
                     if self._current_track is not None:
                         self.append(self._current_track)
-                        if loop and self.__len__() > 1:
+                        if loop and self.__len__() > 1 and (handler := self._queue_handler):
                             loop.create_task(
-                                self._handler.send_track_message(self._current_track, self.__len__() - 1, is_loop=True)
+                                handler.send_track_message(self._current_track, self.__len__() - 1, is_loop=True)
                             )
                     self._current_track = self.popleft()
             self.new_track = True
@@ -107,15 +121,14 @@ class Queue(SimpleQueue):
 
     async def clear(self):
         super().clear()
-        await self._handler.remove_track_message(all=True)
+        if handler := self._queue_handler:
+            await handler.remove_track_message(all=True)
         if self.__shuffle is not Shuffle.NOSHUFFLE:
             self.__shuffled_queue.clear()
             self.__shuffle = Shuffle.NOSHUFFLE
 
     async def add_track(self, track: Track, *args):
-        await super().add_track(
-            track,
-        )
+        await super().add_track(track)
         if self.__shuffle is not Shuffle.NOSHUFFLE:
             await self.__shuffled_queue.add_track(track)
 
