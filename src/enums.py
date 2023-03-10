@@ -41,8 +41,9 @@ class Shuffle(Enum):
 
 
 class ThreadType(Enum):
-    QUEUE: str = "queue_id"
+    HISTORY: str = "history_id"
     SETTINGS: str = "settings_id"
+    QUEUE: str = "queue_id"
 
     @classmethod
     def get_key(cls, thread_type: str | Any) -> Self | None:

@@ -1,12 +1,10 @@
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Self
 
+import Bot
 import discord
 from discord import ui
 from discord.ext import bridge, commands
-from loguru import logger
-
-import Bot
 
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):
@@ -69,20 +67,9 @@ class HandlerABC(ABC):
 
 
 class ThreadHandlerABC(HandlerABC, ABC):
-    def __init__(self, thread: discord.Thread | None):
+    def __init__(self, thread: discord.Thread) -> None:
         self.__thread = thread
 
     @property
     def thread(self):
         return self.__thread
-
-    @staticmethod
-    async def get_thread_message(thread: discord.Thread) -> discord.Message | None:
-        try:
-            return (await thread.history(limit=1, oldest_first=True).flatten())[0]
-        except Exception as e:
-            logger.warning("NO THREAD MESSAGE FOR U @", e)
-            return None
-
-    async def update_thread_views(self):
-        raise NotImplementedError
