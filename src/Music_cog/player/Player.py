@@ -11,7 +11,7 @@ from Music_cog.room.Handlers import PlayerMessageHandler
 
 from . import Player_utils as plUtils
 from .Queue import Queue
-from .Track import Track, TrackInfo
+from .Track import MetaData, Track, TrackInfo
 
 TIMEOUT = 10
 
@@ -94,7 +94,7 @@ class MusicPlayer(discord.VoiceClient):
             self._queue.prepare_prev_track()
             self.stop()
 
-    async def add_query(self, query: str, search_platform: SearchPlatform, request_data: dict) -> None:
+    async def add_query(self, query: str, search_platform: SearchPlatform, request_data: MetaData) -> None:
         coro = asyncio.create_task(plUtils.define_stream_method(query, search_platform, request_data))
         await asyncio.wait_for(coro, timeout=20)
         tracks_all_meta = coro.result()

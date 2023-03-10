@@ -3,10 +3,12 @@ import datetime
 from typing import Any
 
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
-from enums import SearchPlatform, ThreadType
 from loguru import logger
+
+from ABC import MusicCogABC
+from enums import SearchPlatform, ThreadType
+from Music_cog.player.Track import MetaData
 
 from . import Utils
 from .player import MusicPlayer
@@ -63,7 +65,15 @@ class MusicPlayerCog(MusicCogABC):
             return
         if thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS):
             search_platform: SearchPlatform = await SettingsThreadHandler(thread).search_platform
-        request_data: dict = {"author": ctx.author, "created_at": datetime.datetime.now(tz=datetime.timezone.utc)}
+        request_data = MetaData(
+            {
+                "title": "",
+                "artist": "",
+                "thumbnail": "",
+                "requested_by": ctx.author,
+                "requested_at": datetime.datetime.now(tz=datetime.timezone.utc),
+            }
+        )
         await player.add_query(query, search_platform, request_data)
 
     @play.before_invoke
@@ -144,12 +154,6 @@ class MusicPlayerCog(MusicCogABC):
         else:
             logger.opt(exception=error).error("bruh")
             await ctx.send(f"Bruh... Something went wrong -> {error}", delete_after=3)
-
-    @commands.Cog.listener("on_ready")
-    async def on_ready_callback(self):
-        for vc in self.client.voice_clients:
-            if vc.channel is not None:
-                vc.disconnect()
 
 
 def setup(client: bridge.Bot):
