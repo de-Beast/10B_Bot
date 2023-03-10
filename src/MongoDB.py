@@ -45,8 +45,8 @@ class DataBase:
         return info
 
     def update_room_info(self, room_info: MusicRoomInfo):
-        edited_info = convert_music_room_info(room_info)
-        self.music_rooms_collection.update_one({"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True)
+        if edited_info := convert_music_room_info(room_info):
+            self.music_rooms_collection.update_one({"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True)
 
     def get_music_room_id(self, guild: discord.Guild) -> int | None:
         info = self.music_rooms_collection.find_one({"guild_id": guild.id}, {"_id": 0, "room_id": 1})
@@ -65,12 +65,15 @@ class DataBase:
             return edited_info
 
 
-def convert_music_room_info(info: MusicRoomInfo, *, for_storage: bool = True) -> MusicRoomInfo:
-    converted_info: MusicRoomInfo = {
-        "guild_id": info["guild_id"],
-        "room_id": info["room_id"],
-        "threads": {thread.value: info["threads"][thread] for thread in ThreadType}
-        if for_storage
-        else {thread: info["threads"][thread.value] for thread in ThreadType},
-    }
-    return converted_info
+def convert_music_room_info(info: MusicRoomInfo, *, for_storage: bool = True) -> MusicRoomInfo | None:
+    try:
+        converted_info: MusicRoomInfo = {
+            "guild_id": info["guild_id"],
+            "room_id": info["room_id"],
+            "threads": {thread.value: info["threads"][thread] for thread in ThreadType}
+            if for_storage
+            else {thread: info["threads"][thread.value] for thread in ThreadType},
+        }
+        return converted_info
+    except KeyError:
+        return None
