@@ -66,8 +66,7 @@ class MessageHandler(HandlerABC):
             "title": track.title,
             "timestamp": str(track.requested_at),
             "url": track.track_url,
-            "author": {"name": f"{number}. {track.artist}" if number else f"{track.artist}",
-                       "url": track.artist_url},
+            "author": {"name": f"{number}. {track.author}" if number else f"{track.author}", "url": track.author_url},
             "description": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
                             <t:{track.requested_at.timestamp().__ceil__()}:R>",
         }
@@ -78,7 +77,7 @@ class MessageHandler(HandlerABC):
         return embed
 
     async def update_embed_with_embed(self, embed: discord.Embed) -> discord.Embed:
-        next_embed = self.__message.embeds[0]
+        next_embed = self.message.embeds[0]
         await self.message.edit(embed=embed)
         return next_embed
 
@@ -91,7 +90,7 @@ class PlayerMessageHandler(MessageHandler):
     @property
     def shuffle(self):
         return MainView.from_message(self.message).shuffle
-    
+
     @property
     def channel(self):
         return self.message.channel
@@ -105,7 +104,7 @@ class PlayerMessageHandler(MessageHandler):
     @staticmethod
     async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
-            async for message in room.history(limit=1):
+            async for message in room.history():
                 if len(message.embeds) > 0:
                     return message
         except Exception as e:
@@ -117,9 +116,9 @@ class PlayerMessageHandler(MessageHandler):
         return MainView()
 
     async def update_main_view(self):
-        backed_view = MainView.from_message(self.message)
-        backed_view.set_to_default_view()
-        await self.message.edit(view=backed_view)
+        view = MainView.from_message(self.message)
+        view.set_to_default_view()
+        await self.message.edit(view=view)
         self.client.add_view(MainView(), message_id=self.message.id)
 
     @staticmethod
@@ -162,7 +161,7 @@ class PlayerMessageHandler(MessageHandler):
                 "color": 0x00FF00,
                 "timestamp": str(track.requested_at),
                 "url": track.track_url,
-                "author": {"name": track.artist, "url": track.artist_url},
+                "author": {"name": track.author, "url": track.author_url},
                 "image": {"url": track.thumbnail},
                 "fields": [
                     {
@@ -188,10 +187,11 @@ class SettingsThreadHandler(ThreadHandlerABC):
     @staticmethod
     async def get_thread_message(thread: discord.Thread) -> discord.Message | None:
         try:
-            return (await thread.history(limit=1, oldest_first=True).flatten())[0]
+            async for message in thread.history(limit=1, oldest_first=True):
+                return message
         except Exception as e:
             logger.warning("NO THREAD MESSAGE FOR U @", e)
-            return None
+        return None
 
     @staticmethod
     def create_settings_view() -> SettingsView:
@@ -238,9 +238,9 @@ class QueueThreadHandler(ThreadHandlerABC):
 
 
 class HistoryThreadHandler(ThreadHandlerABC):
-        async def store_track_in_history(self, track: Track) -> None:
-            embed = MessageHandler.create_embed_from_track(track)
-            await self.thread.send(embed=embed)
+    async def store_track_in_history(self, track: Track) -> None:
+        embed = MessageHandler.create_embed_from_track(track)
+        await self.thread.send(embed=embed)
 
 
 async def update_threads_views(guild: discord.Guild):

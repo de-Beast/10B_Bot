@@ -17,7 +17,7 @@ FFMPEG_OPTIONS = {
 
 class MetaData(TypedDict):
     title: str
-    artist: str
+    author: str
     thumbnail: str
     requested_by: discord.User | discord.Member
     requested_at: datetime.datetime
@@ -27,7 +27,7 @@ class TrackInfo(TypedDict):
     meta: MetaData
     source: str
     track_url: str
-    artist_url: str
+    author_url: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -36,10 +36,10 @@ class Track:
 
     src: discord.FFmpegOpusAudio
     title: str
-    artist: str
+    author: str
     thumbnail: str
     track_url: str
-    artist_url: str
+    author_url: str
 
     requested_by: discord.User | discord.Member
     requested_at: datetime.datetime
@@ -49,20 +49,20 @@ class Track:
         src_url = data["source"]
         src = await discord.FFmpegOpusAudio.from_probe(data["source"], **FFMPEG_OPTIONS)
         title = data["meta"]["title"]
-        artist = data["meta"]["artist"]
+        author = data["meta"]["author"]
         thumbnail = data["meta"]["thumbnail"]
         requested_by = data["meta"]["requested_by"]
         requested_at = data["meta"]["requested_at"]
         track_url = data["track_url"]
-        artist_url = data["artist_url"]
+        author_url = data["author_url"]
         return cls(
             src_url,
             src,
             title,
-            artist,
+            author,
             thumbnail,
             track_url,
-            artist_url,
+            author_url,
             requested_by,
             requested_at,
         )
@@ -70,17 +70,15 @@ class Track:
     @classmethod
     async def from_track(cls, track: Self | None) -> Self | None:
         if isinstance(track, Track):
-            src = await discord.FFmpegOpusAudio.from_probe(
-                track.src_url, **FFMPEG_OPTIONS
-            )
+            src = await discord.FFmpegOpusAudio.from_probe(track.src_url, **FFMPEG_OPTIONS)
             return cls(
                 track.src_url,
                 src,
                 track.title,
-                track.artist,
+                track.author,
                 track.thumbnail,
                 track.track_url,
-                track.artist_url,
+                track.author_url,
                 track.requested_by,
                 track.requested_at,
             )
@@ -96,4 +94,4 @@ class Track:
         return False
 
     def __str__(self) -> str:
-        return f"<red>{self.title}</> @ {self.artist}"
+        return f"<red>{self.title}</> @ {self.author}"

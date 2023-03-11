@@ -37,13 +37,13 @@ def search_yt_single(search_method: str, request_data: MetaData) -> TrackInfo | 
                 "source": info["url"],
                 "meta": {
                     "title": info["title"],
-                    "artist": info["uploader"],
+                    "author": info["uploader"],
                     "thumbnail": info["thumbnail"],
                     "requested_by": request_data["requested_by"],
                     "requested_at": request_data["requested_at"],
                 },
                 "track_url": info["webpage_url"],
-                "artist_url": info["uploader_url"],
+                "author_url": info["uploader_url"],
             }
         )
         if info
@@ -64,13 +64,13 @@ def search_yt_list(search_method: str, request_data: MetaData) -> Generator[Trac
                 "source": info["formats"][0]["url"],
                 "meta": {
                     "title": info["title"],
-                    "artist": info["uploader"],
+                    "author": info["uploader"],
                     "thumbnail": info["thumbnails"][-1]["url"],
                     "requested_by": request_data["requested_by"],
                     "requested_at": request_data["requested_at"],
                 },
                 "track_url": info["webpage_url"],
-                "artist_url": info["uploader_url"],
+                "author_url": info["uploader_url"],
             }
         )
 
@@ -111,13 +111,13 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
             "source": audio[0]["url"],
             "meta": {
                 "title": audio[0]["title"],
-                "artist": audio[0]["artist"],
+                "author": audio[0]["author"],
                 "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else None,
                 "requested_by": request_data["requested_by"],
                 "requested_at": request_data["requested_at"],
             },
             "track_url": audio[0]["url"],
-            "artist_url": audio[0]["url"],
+            "author_url": audio[0]["url"],
         }
     )
 

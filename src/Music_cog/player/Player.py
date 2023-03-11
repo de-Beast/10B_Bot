@@ -13,7 +13,7 @@ from . import Player_utils as plUtils
 from .Queue import Queue
 from .Track import MetaData, Track, TrackInfo
 
-TIMEOUT = 10
+TIMEOUT = 20
 
 
 def _notify_and_close_condition(cond: Condition):

@@ -68,7 +68,7 @@ class MusicPlayerCog(MusicCogABC):
         request_data = MetaData(
             {
                 "title": "",
-                "artist": "",
+                "author": "",
                 "thumbnail": "",
                 "requested_by": ctx.author,
                 "requested_at": datetime.datetime.now(tz=datetime.timezone.utc),
