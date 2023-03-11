@@ -2,10 +2,11 @@ import random
 from typing import TYPE_CHECKING, Any, Self
 
 import discord
+from loguru import logger
+
 from ABC import HandlerABC, ThreadHandlerABC
 from Bot import TenB_Bot
 from enums import SearchPlatform, Shuffle, ThreadType
-from loguru import logger
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
@@ -66,8 +67,7 @@ class MessageHandler(HandlerABC):
             "title": track.title,
             "timestamp": str(track.requested_at),
             "url": track.track_url,
-            "author": {"name": f"{number}. {track.artist}" if number else f"{track.artist}",
-                       "url": track.artist_url},
+            "author": {"name": f"{number}. {track.artist}" if number else f"{track.artist}", "url": track.artist_url},
             "description": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
                             <t:{track.requested_at.timestamp().__ceil__()}:R>",
         }
@@ -91,7 +91,7 @@ class PlayerMessageHandler(MessageHandler):
     @property
     def shuffle(self):
         return MainView.from_message(self.message).shuffle
-    
+
     @property
     def channel(self):
         return self.message.channel
@@ -105,7 +105,7 @@ class PlayerMessageHandler(MessageHandler):
     @staticmethod
     async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
-            async for message in room.history(limit=1):
+            async for message in room.history(oldest_first=True):
                 if len(message.embeds) > 0:
                     return message
         except Exception as e:
@@ -188,10 +188,11 @@ class SettingsThreadHandler(ThreadHandlerABC):
     @staticmethod
     async def get_thread_message(thread: discord.Thread) -> discord.Message | None:
         try:
-            return (await thread.history(limit=1, oldest_first=True).flatten())[0]
+            async for message in thread.history(limit=1, oldest_first=True):
+                return message
         except Exception as e:
             logger.warning("NO THREAD MESSAGE FOR U @", e)
-            return None
+        return None
 
     @staticmethod
     def create_settings_view() -> SettingsView:
@@ -238,9 +239,9 @@ class QueueThreadHandler(ThreadHandlerABC):
 
 
 class HistoryThreadHandler(ThreadHandlerABC):
-        async def store_track_in_history(self, track: Track) -> None:
-            embed = MessageHandler.create_embed_from_track(track)
-            await self.thread.send(embed=embed)
+    async def store_track_in_history(self, track: Track) -> None:
+        embed = MessageHandler.create_embed_from_track(track)
+        await self.thread.send(embed=embed)
 
 
 async def update_threads_views(guild: discord.Guild):
