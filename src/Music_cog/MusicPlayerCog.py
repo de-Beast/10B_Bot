@@ -102,7 +102,8 @@ class MusicPlayerCog(MusicCogABC):
                             )
                     return False
             elif ctx.voice_client is None:
-                await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
+                player = await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
+                await player.init()
             elif ctx.author.voice.channel != ctx.voice_client.channel:
                 most_authoritative_role: discord.Role | None = None
                 if isinstance(ctx.voice_client, MusicPlayer) and isinstance(
@@ -115,7 +116,8 @@ class MusicPlayerCog(MusicCogABC):
                     if most_authoritative_role <= ctx.author.top_role:
                         await ctx.voice_client.disconnect()
                         await asyncio.sleep(1)
-                        await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
+                        player = await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
+                        await player.init()
                     else:
                         await ctx.respond(message, delete_after=5)
                         return False

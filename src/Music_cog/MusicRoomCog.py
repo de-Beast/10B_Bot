@@ -1,11 +1,10 @@
 import discord
-from discord.ext import bridge, commands
-from loguru import logger
-
 from ABC import MusicCogABC
 from Bot import TenB_Bot
-from MongoDB import DataBase
 from config import get_config
+from discord.ext import bridge, commands
+from loguru import logger
+from MongoDB import DataBase
 
 from . import MusicRoom_utils as mrUtils
 from . import Utils
@@ -70,9 +69,10 @@ class MusicRoomCog(MusicCogABC):
         if message.author != self.client.user and message.guild:
             prefix: str = get_config().get("PREFIX", "")
 
-            if message.channel == Utils.get_music_room(message.guild) \
-                and not message.content.startswith(prefix, 0, len(prefix)):
-            # if message.channel == Utils.get_music_room(message.guild):
+            if message.channel == Utils.get_music_room(message.guild) and not message.content.startswith(
+                prefix, 0, len(prefix)
+            ):
+                # if message.channel == Utils.get_music_room(message.guild):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
                 ctx.args = [message.content]
                 try:
@@ -101,9 +101,9 @@ class MusicRoomCog(MusicCogABC):
             try:
                 await self.clear_room_from_user_messages(guild)
                 await self.clear_room_from_reactions(guild)
-                handler = await PlayerMessageHandler.with_message_from_room(Utils.get_music_room(guild))
+                handler = await PlayerMessageHandler.from_room(Utils.get_music_room(guild))
                 await handler.update_main_view()
-                await handler.update_embed(guild)
+                await handler.update_playing_track_embed(guild)
                 await Handlers.update_threads_views(guild)
             except Exception as e:
                 logger.error(f"{e}")

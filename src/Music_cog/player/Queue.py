@@ -3,10 +3,10 @@ import random
 from collections import deque
 
 import discord
-from enums import Loop, Shuffle, ThreadType
 
+from enums import Loop, Shuffle, ThreadType
 from Music_cog import Utils
-from Music_cog.room.Handlers import HistoryThreadHandler, QueueThreadHandler
+from Music_cog.room.Handlers import HistoryThreadHandler, PlayerMessageHandler, QueueThreadHandler
 
 from .Track import Track
 
@@ -18,7 +18,11 @@ class SimpleQueue(deque):
         self._current_track: Track | None = None
         self.new_track: bool = False
 
-        self._looping: Loop = Loop.NOLOOP
+        self._loop: Loop = Loop.NOLOOP
+
+    async def init(self) -> None:
+        if player_handler := await PlayerMessageHandler.from_room(Utils.get_music_room(self.guild)):
+            self._loop = player_handler.loop
 
     @property
     def _queue_handler(self) -> QueueThreadHandler | None:
@@ -31,6 +35,7 @@ class SimpleQueue(deque):
         if thread := Utils.get_thread(self.guild, ThreadType.HISTORY):
             return HistoryThreadHandler(thread)
         return None
+    
 
     def clear(self):
         super().clear()
@@ -43,32 +48,32 @@ class SimpleQueue(deque):
                 self._current_track = track
                 self.new_track = True
             else:
-                if q_handler := self._queue_handler:
-                    await q_handler.send_track_message(track, self.__len__() + 1)
+                if queue_handler := self._queue_handler:
+                    await queue_handler.send_track_message(track, self.__len__() + 1)
                 self.append(track)
-            if h_handler := self._history_handler:
-                await h_handler.store_track_in_history(track)
+            if history_handler := self._history_handler:
+                await history_handler.store_track_in_history(track)
 
     def prepare_prev_track(self):
-        if self._looping is not Loop.ONE:
+        if self._loop is not Loop.ONE:
             self.appendleft(self._current_track)
-            if self._looping is Loop.LOOP:
+            if self._loop is Loop.LOOP:
                 self.rotate(1)
             self._current_track = None
 
     async def update_queue(self, loop: asyncio.AbstractEventLoop | None = None):
         try:
-            match self._looping:
+            match self._loop:
                 case Loop.NOLOOP:
                     self._current_track = self.popleft()
-                    if loop and (handler := self._queue_handler):
-                        loop.create_task(handler.remove_track_message())
+                    if loop and (queue_handler := self._queue_handler):
+                        loop.create_task(queue_handler.remove_track_message())
                 case Loop.LOOP:
                     if self._current_track is not None:
                         self.append(self._current_track)
-                        if loop and self.__len__() > 1 and (handler := self._queue_handler):
+                        if loop and self.__len__() > 1 and (queue_handler := self._queue_handler):
                             loop.create_task(
-                                handler.send_track_message(self._current_track, self.__len__() - 1, is_loop=True)
+                                queue_handler.send_track_message(self._current_track, self.__len__() - 1, is_loop=True)
                             )
                     self._current_track = self.popleft()
             self.new_track = True
@@ -85,14 +90,14 @@ class Queue(SimpleQueue):
         self.is_shuffled: bool = False
 
     @property
-    def looping(self) -> Loop:
-        return self._looping
+    def loop(self) -> Loop:
+        return self._loop
 
-    @looping.setter
-    def looping(self, loop_type: Loop):
+    @loop.setter
+    def loop(self, loop_type: Loop):
         if isinstance(loop_type, Loop):
-            self._looping = loop_type
-            self.__shuffled_queue._looping = loop_type
+            self._loop = loop_type
+            self.__shuffled_queue._loop = loop_type
         else:
             raise TypeError("Loop type must be Loop enum")
 

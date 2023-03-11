@@ -3,9 +3,9 @@ from threading import Condition, Thread
 
 import discord
 from discord.ext import bridge, tasks
-from enums import Loop, SearchPlatform, Shuffle
 from loguru import logger
 
+from enums import Loop, SearchPlatform, Shuffle
 from Music_cog import Utils
 from Music_cog.room.Handlers import PlayerMessageHandler
 
@@ -31,9 +31,12 @@ class MusicPlayer(discord.VoiceClient):
 
         self._inited = False
 
+    async def init(self) -> None:
+        await self._queue.init()
+    
     @property
     async def _player_message_handler(self) -> PlayerMessageHandler | None:
-        return await PlayerMessageHandler.with_message_from_room(Utils.get_music_room(self.guild))
+        return await PlayerMessageHandler.from_room(Utils.get_music_room(self.guild))
 
     @property
     def has_track(self) -> bool:
@@ -45,11 +48,11 @@ class MusicPlayer(discord.VoiceClient):
 
     @property
     def looping(self) -> Loop:
-        return self._queue.looping
+        return self._queue.loop
 
     @looping.setter
     def looping(self, loop_type: Loop):
-        self._queue.looping = loop_type
+        self._queue.loop = loop_type
 
     @property
     def shuffle(self) -> Shuffle:
@@ -131,12 +134,12 @@ class MusicPlayer(discord.VoiceClient):
         if self._queue.current_track is None:
             self._playing_track = None
             if handler := await self._player_message_handler:
-                await handler.update_embed(self.guild, self.track, self.shuffle)
+                await handler.update_playing_track_embed(self.guild, self.track, self.shuffle)
             self.play_music.cancel()
         elif self._queue.new_track:
             self._playing_track = await self.track.copy()
             if handler := await self._player_message_handler:
-                await handler.update_embed(self.guild, self.track, self.shuffle)
+                await handler.update_playing_track_embed(self.guild, self.track, self.shuffle)
             await self.play_next(self.play_music.loop)
 
     @tasks.loop(seconds=5)
