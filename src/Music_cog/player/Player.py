@@ -148,4 +148,4 @@ class MusicPlayer(discord.VoiceClient):
             if self.has_track:
                 break
             elif c == TIMEOUT:
-                await self.disconnect(force=True)
+                await self.disconnect()

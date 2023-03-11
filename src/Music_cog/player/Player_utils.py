@@ -75,7 +75,7 @@ def search_yt_list(search_method: str, request_data: MetaData) -> Generator[Trac
         )
 
 
-def get_vk_album(owner_id: int, id: int, key, request_data: MetaData) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(owner_id: int, id: int, key: str | None, request_data: MetaData) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -128,7 +128,7 @@ async def define_stream_method(item: str, search_platform: SearchPlatform, reque
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",
         item,
     )
-    vk = fullmatch(r"https?://(?:www\.)?vk\.com/audio(-?\d+_\d+)(?:_\d+)?", item)
+    vk = fullmatch(r"https?://(?:www\.)?vk\.com/audio(-?\d+_\d+)(?:_[0-9a-z]+)?", item)
     vk_list = fullmatch(
         r"https?://(?:www\.)?vk\.com/music/(?:playlist|album)/(-?\d+)_(\d+)_?([a-z0-9_]+)?",
         item,
@@ -145,7 +145,7 @@ async def define_stream_method(item: str, search_platform: SearchPlatform, reque
     if vk:
         return [get_vk_single(vk[1], request_data)]
     if vk_list:
-        key = vk_list[3] if len(vk_list.groups()) > 2 else None
+        key: str | None = str(vk_list[3]) if len(vk_list.groups()) > 2 else None
         return list(get_vk_album(int(vk_list[1]), int(vk_list[2]), key, request_data))
     match search_platform:
         case SearchPlatform.YOUTUBE:
