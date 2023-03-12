@@ -3,8 +3,9 @@ from time import sleep
 from typing import Generator
 
 import yt_dlp as ytdl  # type: ignore
-from enums import SearchPlatform
 from loguru import logger
+
+from enums import SearchPlatform
 from vk_api import get_api
 
 from .Track import MetaData, TrackInfo
@@ -123,7 +124,7 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
 
 
 async def define_stream_method(item: str, search_platform: SearchPlatform, request_data: MetaData) -> list[TrackInfo | None]:
-    yt = fullmatch(r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-]+)", item)
+    yt = fullmatch(r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-_]+)(&list=)?([a-zA-Z0-9+\-_]+)", item)
     yt_list = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",
         item,
