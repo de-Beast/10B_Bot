@@ -1,10 +1,11 @@
 from typing import Self
 
 import discord
+from loguru import logger
+
 from ABC import HandlerABC, ThreadHandlerABC
 from Bot import TenB_Bot
 from enums import SearchPlatform, Shuffle, ThreadType
-from loguru import logger
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 

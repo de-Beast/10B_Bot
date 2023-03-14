@@ -18,7 +18,7 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
     def client(self) -> Bot.TenB_Bot:
         return MusicCogABC._client
 
-    async def invoke_command(self, ctx: bridge.BridgeExtContext, name: str):
+    async def invoke_command(self, ctx: bridge.BridgeExtContext, name: str, /, *args, *kwargs):
         command = self._client.get_command(name)
         if not command:
             return
@@ -26,7 +26,7 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
         if _ := not command.enabled:
             command.enabled = True
         try:
-            await command.invoke(ctx)
+            await ctx.invoke(command, *args,  *kwargs)
         except commands.CommandOnCooldown:
             await ctx.send("You are on cooldown", delete_after=3)
         if _:
