@@ -3,9 +3,9 @@ from threading import Condition, Thread
 
 import discord
 from discord.ext import bridge, tasks
+from enums import Loop, Shuffle
 from loguru import logger
 
-from enums import Loop, SearchPlatform, Shuffle
 from Music_cog import Utils
 from Music_cog.room.Handlers import PlayerMessageHandler
 
@@ -33,7 +33,7 @@ class MusicPlayer(discord.VoiceClient):
 
     async def init(self) -> None:
         await self._queue.init()
-    
+
     @property
     async def _player_message_handler(self) -> PlayerMessageHandler | None:
         return await PlayerMessageHandler.from_room(Utils.get_music_room(self.guild))
@@ -97,8 +97,8 @@ class MusicPlayer(discord.VoiceClient):
             self._queue.prepare_prev_track()
             self.stop()
 
-    async def add_query(self, query: str, search_platform: SearchPlatform, request_data: MetaData) -> None:
-        coro = asyncio.create_task(plUtils.define_stream_method(query, search_platform, request_data))
+    async def add_query(self, query: str, request_data: MetaData) -> None:
+        coro = asyncio.create_task(plUtils.define_stream_method(query, request_data))
         await asyncio.wait_for(coro, timeout=20)
         tracks_all_meta = coro.result()
         await self._add_tracks_to_queue(tracks_all_meta)

@@ -54,10 +54,10 @@ class ThreadType(Enum):
 
 
 class SearchPlatform(Enum):
-    YOUTUBE: str = "yt"
-    VK: str = "vk"
-    SPOTIFY: str = "spotify"
-    SOUNDCLOUD: str = "soundcloud"
+    YOUTUBE: str = "Youtube"
+    VK: str = "VK"
+    SPOTIFY: str = "Spotify"
+    SOUNDCLOUD: str = "Soundcloud"
 
     @classmethod
     def get_key(cls, platform: str | Any) -> Self:

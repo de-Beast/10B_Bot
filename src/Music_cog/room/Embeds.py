@@ -1,31 +1,10 @@
-import random
-
 import discord
+
 from enums import Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
 from .message_config import message_config
-
-
-def rofl(requester: discord.User | discord.Member) -> str:
-    rofl_str = " – "
-    match requester.id:
-        case 447849746586140672:
-            rofl_str += random.choice(("ПОПУЩЕНЕЦ", "ОБСОСИК", "БЕРСЕРК ГАВНИЩЕ ЕБУЧЕЕ"))
-        case 446753575465385998:
-            rofl_str += random.choice(
-                (
-                    "ВОТ БЫ ТЫ НЕ РАЗГОВАРИВАЛ",
-                    "ЖИРНОЕ ЧМО",
-                    "КАКАЯ ЖЕ НАСТЕНЬКА ОХУИТЕЛЬНАЯ",
-                )
-            )
-        case 309011989286354944:
-            rofl_str += random.choice(("МОЯ СЛАДЕНЬКАЯ БУЛОЧКА", "АНИМЕШНИК", "ТРАХНИ МЕНЯ"))
-        case 600361186495692801:
-            rofl_str += random.choice(("ЛУЧШИЙ В МИРЕ", "СПАСИБО ЗА БОТА", "АПНУЛ ВТОРУЮ ПЛАТИНУ"))
-    return rofl_str if len(rofl_str) > 3 else ""
 
 
 class EmbedDefault(discord.Embed):
@@ -60,13 +39,17 @@ class EmbedTrack(EmbedDefault):
     ) -> None:
         super().__init__(guild, shuffle, **kwargs)
         self.remove_image()
+        self.search_platform = track.platform
 
         self.title = track.title
         self.timestamp = track.requested_at
         self.url = track.track_url
         self.set_author(name=f"{number}. {track.author}" if number else f"{track.author}", url=track.author_url)
-        self.description = f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
-                            <t:{track.requested_at.timestamp().__ceil__()}:R>"
+        self.description = (
+            f"Requested by {track.requested_by.mention}\n"
+            f"<t:{track.requested_at.timestamp().__ceil__()}:R>\n"
+            f"Platform: {track.platform.value}"
+        )
 
 
 class EmbedPlayingTrack(EmbedTrack):
@@ -81,6 +64,9 @@ class EmbedPlayingTrack(EmbedTrack):
         self.add_field(
             name="Request Info",
             inline=True,
-            value=f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
-                <t:{track.requested_at.timestamp().__ceil__()}:R>",
+            value=(
+                f"Requested by {track.requested_by.mention}\n"
+                f"<t:{track.requested_at.timestamp().__ceil__()}:R>\n"
+                f"Platform: {track.platform.value}"
+            ),
         )

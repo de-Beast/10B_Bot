@@ -1,11 +1,25 @@
+import re
+
 import discord
 from ABC import MusicCogABC
 from discord.ext import bridge, commands
-from enums import ThreadType
+from enums import SearchPlatform, ThreadType
 from loguru import logger
 
 from . import Utils
-from .room.Handlers import HistoryThreadHandler, QueueThreadHandler, SettingsThreadHandler
+from .room.Handlers import (
+    HistoryThreadHandler,
+    QueueThreadHandler,
+    SettingsThreadHandler,
+)
+from .Utils import is_connected
+
+
+def is_history_thread():
+    def predicate(ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
+        return ctx.channel == Utils.get_thread(ctx.guild, ThreadType.HISTORY)
+
+    return commands.check(predicate)
 
 
 class MusicThreadCog(MusicCogABC):
@@ -23,10 +37,23 @@ class MusicThreadCog(MusicCogABC):
 
     ############################ Commands ###############################
 
-    # @commands.slash_command(name="swap")
-    # async def swap_tracks(self, ctx: discord.ApplicationContext,
-    #                       track: discord.Option(input_type=str|int, )):
-    #     pass
+    @commands.message_command(name="Add Track From History")
+    @is_history_thread()
+    @is_connected(False)
+    async def add_track_from_history(self, ctx: discord.ApplicationContext, message: discord.Message):
+        await ctx.defer(ephemeral=True, invisible=False)
+        embed = message.embeds[0]
+        new_ctx = await self.client.get_context(message)
+        new_ctx.author = ctx.author
+        search_platform: SearchPlatform | None = None
+        if isinstance(embed.description, str):
+            for search_plat in SearchPlatform:
+                if match := re.search(search_plat.value, embed.description):
+                    search_platform = SearchPlatform.get_key(match[0])
+                    break
+        setattr(new_ctx, "search_platform", search_platform)
+        await self.invoke_command(new_ctx, "play", query=embed.title)
+        await ctx.send_followup(content="Success", delete_after=3)
 
     ############################# Listeners #############################
 
@@ -50,7 +77,7 @@ class MusicThreadCog(MusicCogABC):
 
                 handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
-                
+
                 handler = HistoryThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
             except Exception as e:

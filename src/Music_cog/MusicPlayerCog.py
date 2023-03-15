@@ -1,33 +1,20 @@
 import asyncio
 import datetime
-from typing import Any
 
 import discord
+from ABC import MusicCogABC
 from discord.ext import bridge, commands
+from enums import SearchPlatform, ThreadType
 from loguru import logger
 
-from ABC import MusicCogABC
-from enums import SearchPlatform, ThreadType
 from Music_cog.player.Track import MetaData
 
 from . import Utils
 from .player import MusicPlayer
 from .room.Handlers import SettingsThreadHandler
+from .Utils import is_connected
 
 ############################## Checks ###################################
-
-
-def is_connected():  # TODO  Проверка на подключение к каналу (для Play использовать error handler)
-    def predicate(
-        ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext,
-    ) -> bool:
-        return (
-            isinstance(ctx.voice_client, MusicPlayer)
-            and ctx.author.voice is not None
-            and ctx.author.voice.channel == ctx.voice_client.channel
-        )
-
-    return commands.check(predicate)
 
 
 class MusicPlayerCog(MusicCogABC):
@@ -51,11 +38,10 @@ class MusicPlayerCog(MusicCogABC):
         query: str,
     ):
         try:
-            await ctx.defer()
+            await ctx.defer(ephemeral=True, invisible=False)
         except Exception:
             pass
-        player: MusicPlayer | Any = ctx.voice_client
-        if not isinstance(player, MusicPlayer):
+        if not isinstance(player := ctx.voice_client, MusicPlayer):
             return
 
         if player and player.has_track and isinstance(ctx, bridge.BridgeExtContext) and not query:
@@ -63,21 +49,30 @@ class MusicPlayerCog(MusicCogABC):
             return
         if not query:
             return
-        if thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS):
-            search_platform: SearchPlatform = await SettingsThreadHandler(thread).search_platform
+
+        search_platform: SearchPlatform = getattr(
+            ctx,
+            "search_platform",
+            await SettingsThreadHandler(thread).search_platform
+            if (thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS))
+            else SearchPlatform.YOUTUBE,
+        )
         request_data = MetaData(
             {
                 "title": "",
                 "author": "",
                 "thumbnail": "",
+                "platform": search_platform,
                 "requested_by": ctx.author,
                 "requested_at": datetime.datetime.now(tz=datetime.timezone.utc),
             }
         )
-        await player.add_query(query, search_platform, request_data)
+        await player.add_query(query, request_data)
+        await ctx.respond(content="Success", delete_after=3)
+        
 
     @play.before_invoke
-    async def connection_to_voice_channel(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
+    async def connection_to_voice_channel(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> None:
         try:
             if ctx.author.voice is None:
                 if isinstance(ctx.voice_client, MusicPlayer) and ctx.voice_client.has_track:
@@ -100,7 +95,7 @@ class MusicPlayerCog(MusicCogABC):
                                 ctx.command.slash_variant,
                                 *(opt["value"] for opt in ctx.selected_options),
                             )
-                    return False
+                    return
             elif ctx.voice_client is None:
                 player = await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
                 await player.init()
@@ -120,17 +115,14 @@ class MusicPlayerCog(MusicCogABC):
                         await player.init()
                     else:
                         await ctx.respond(message, delete_after=5)
-                        return False
+                        return
         except (commands.BotMissingPermissions, commands.BotMissingAnyRole):
             message = "Bot is missing permissions to join the voice channel"
             await ctx.respond(message, delete_after=5)
-        except discord.HTTPException:
-            pass
-        else:
-            return True
-        return False
+        except discord.HTTPException as e:
+            await ctx.send(f"Bruh... Something went wrong -> {e}", delete_after=5)
 
-    @commands.command(name="disconnect", aliases=["dis", "d", "leave"])
+    @bridge.bridge_command(name="disconnect", aliases=["dis", "d", "leave"])
     @is_connected()
     async def disconnect(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext):
         if isinstance(ctx.voice_client, MusicPlayer):

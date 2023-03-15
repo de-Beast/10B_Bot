@@ -4,6 +4,8 @@ from typing import Self, TypedDict
 
 import discord
 
+from enums import SearchPlatform
+
 FFMPEG_OPTIONS = {
     "before_options": "\
 				-reconnect 1 \
@@ -19,6 +21,7 @@ class MetaData(TypedDict):
     title: str
     author: str
     thumbnail: str
+    platform: SearchPlatform
     requested_by: discord.User | discord.Member
     requested_at: datetime.datetime
 
@@ -41,6 +44,7 @@ class Track:
     track_url: str
     author_url: str
 
+    platform: SearchPlatform
     requested_by: discord.User | discord.Member
     requested_at: datetime.datetime
 
@@ -51,6 +55,7 @@ class Track:
         title = data["meta"]["title"]
         author = data["meta"]["author"]
         thumbnail = data["meta"]["thumbnail"]
+        platform = data["meta"]["platform"]
         requested_by = data["meta"]["requested_by"]
         requested_at = data["meta"]["requested_at"]
         track_url = data["track_url"]
@@ -63,6 +68,7 @@ class Track:
             thumbnail,
             track_url,
             author_url,
+            platform,
             requested_by,
             requested_at,
         )
@@ -79,6 +85,7 @@ class Track:
                 track.thumbnail,
                 track.track_url,
                 track.author_url,
+                track.platform,
                 track.requested_by,
                 track.requested_at,
             )
