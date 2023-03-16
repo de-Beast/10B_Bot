@@ -1,3 +1,4 @@
+import re
 from typing import Self
 
 import discord
@@ -9,7 +10,12 @@ from enums import SearchPlatform, Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
-from .Embeds import EmbedDefault, EmbedPlayingTrack, EmbedTrack
+from .Embeds import (
+    EmbedDefault,
+    EmbedPlayingTrack,
+    EmbedTrack,
+    set_discription_from_track,
+)
 from .Views import PlayerView, SettingsView, setup_view_client
 
 
@@ -126,6 +132,17 @@ class QueueThreadHandler(ThreadHandlerABC):
 
 class HistoryThreadHandler(ThreadHandlerABC):
     async def store_track_in_history(self, track: Track) -> None:
+        async for message in self.thread.history():
+            if len(message.embeds) > 0:
+                embed = message.embeds[0]
+                if embed.author.name == track.author and embed.title == track.title and isinstance(embed.description, str):
+                    for search_plat in SearchPlatform:
+                        if re.search(search_plat.value, embed.description):
+                            match = re.search(r"\d+", message.clean_content)
+                            content = f"{int(match.group()) + 1} times" if match else "2 times"
+                            await message.edit(content=content, embed=set_discription_from_track(embed, track))
+                            return
+                break
         await self.thread.send(embed=EmbedTrack(track))
 
 

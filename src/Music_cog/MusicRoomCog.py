@@ -1,13 +1,13 @@
 import discord
-from discord.ext import bridge, commands
-from loguru import logger
-
 import MongoDB as mdb
 from ABC import MusicCogABC
 from Bot import TenB_Bot
 from config import get_config
+from discord.ext import bridge, commands
 from enums import ThreadType
+from loguru import logger
 from MongoDB import DataBase, MusicRoomInfo
+
 from Music_cog.room.Embeds import EmbedDefault
 from Music_cog.room.Views.PlayerView import PlayerView
 from Music_cog.room.Views.SettingsView import SettingsView
@@ -38,13 +38,13 @@ class MusicRoomCog(MusicCogABC):
             return mdb.convert_music_room_info(info, for_storage=False)
         return None
 
-    async def update_music_rooms_db(self):
+    async def update_music_rooms_db(self) -> None:
         db = DataBase()
         guilds = self.client.guilds
         for guild in guilds:
             info = self.check_room_correctness(guild, db.music_rooms_collection)
             if not info:
-                info = await self.create_music_room(self.client, guild)
+                info = await self.create_music_room(guild)
             db.update_room_info(info)
 
     async def create_music_room(self, guild: discord.Guild) -> mdb.MusicRoomInfo:
@@ -79,14 +79,17 @@ class MusicRoomCog(MusicCogABC):
             threads_ids.append((thread_type, thread.id))
         return threads_ids
 
-    async def clear_room_from_user_messages(self, guild: discord.Guild):
+    async def clear_room_from_messages(self, guild: discord.Guild, *, include_bot: bool = False) -> None:
         room = Utils.get_music_room(guild)
         if not room:
             return
 
         try:
-            while sum(map(lambda m: m.author != self.client.user, await room.history(oldest_first=True).flatten())):
-                await room.purge(check=lambda m: m.author != self.client.user)
+            async for message in room.history():
+                if len(message.embeds) > 0:
+                    break
+                if message.author != self.client.user or include_bot:
+                    await message.delete()
         except discord.Forbidden as e:
             logger.error("No permissions: ", e)
         except discord.HTTPException as e:
@@ -107,19 +110,24 @@ class MusicRoomCog(MusicCogABC):
 
     ############################## Commands #################################
 
-    @bridge.bridge_command(name="delete", aliases=["delete_room"])
+    @bridge.bridge_command(name="delete-music-room", aliases=["delete_room", "delete_music_room"], enabled=False)
     @commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator=True))  # type: ignore
-    async def delete(self, ctx: commands.Context):
-        await ctx.channel.delete()
+    async def delete(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> None:
+        if music_room := Utils.get_music_room(ctx.guild):
+            await music_room.delete()
+            await ctx.respond(content="Music room is deleted", ephemeral=True, delete_after=5)
+        await ctx.respond(content="No music room to delete", ephemeral=True, delete_after=5)
 
     @bridge.bridge_command(
-        name="create_music_room",
-        aliases=["create", "make_room", "create_room", "make_music_room"],
+        name="create-music-room",
+        aliases=["create", "make_room", "create_room", "make_music_room", "create_music_room"],
+        enabled=False,
     )
     @commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator=True))  # type: ignore
-    async def create_music_room_command(self, ctx: commands.Context):
+    async def create_music_room_command(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> None:
         room_info = await self.create_music_room(ctx.guild)
         DataBase().update_room_info(room_info)
+        await ctx.respond(content="New music room is created", ephemeral=True, delete_after=5)
 
     ############################## Listeners #################################
 
@@ -141,10 +149,10 @@ class MusicRoomCog(MusicCogABC):
             ):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
                 try:
-                    await self.invoke_command(ctx, "play", query=message.content)
+                    await self.invoke_command(ctx, "play", query=message.clean_content)
                 except Exception as e:
                     print(e)
-            await self.clear_room_from_user_messages(message.guild)
+            await self.clear_room_from_messages(message.guild)
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def clear_reactions_on_reaction_add(self, raw_reaction: discord.RawReactionActionEvent):
@@ -164,7 +172,7 @@ class MusicRoomCog(MusicCogABC):
         await self.update_music_rooms_db()
         for guild in self.client.guilds:
             try:
-                await self.clear_room_from_user_messages(guild)
+                await self.clear_room_from_messages(guild, include_bot=True)
                 await self.clear_room_from_reactions(guild)
                 handler = await PlayerMessageHandler.from_room(Utils.get_music_room(guild))
                 await handler.update_main_view()

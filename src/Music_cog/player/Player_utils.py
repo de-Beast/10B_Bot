@@ -114,7 +114,7 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
             "source": audio[0]["url"],
             "meta": {
                 "title": audio[0]["title"],
-                "author": audio[0]["author"],
+                "author": audio[0]["artist"],
                 "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else None,
                 "platform": request_data["platform"],
                 "requested_by": request_data["requested_by"],

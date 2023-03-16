@@ -1,10 +1,18 @@
 import discord
-
 from enums import Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
 from .message_config import message_config
+
+
+def set_discription_from_track(embed: discord.Embed, track: Track) -> discord.Embed:
+    embed.timestamp = track.requested_at
+    embed.description = (
+        f"Requested by {track.requested_by.mention} <t:{track.requested_at.timestamp().__ceil__()}:R>\n"
+        f"Platform: {track.platform.value}"
+    )
+    return embed
 
 
 class EmbedDefault(discord.Embed):
@@ -46,8 +54,7 @@ class EmbedTrack(EmbedDefault):
         self.url = track.track_url
         self.set_author(name=f"{number}. {track.author}" if number else f"{track.author}", url=track.author_url)
         self.description = (
-            f"Requested by {track.requested_by.mention}\n"
-            f"<t:{track.requested_at.timestamp().__ceil__()}:R>\n"
+            f"Requested by {track.requested_by.mention} <t:{track.requested_at.timestamp().__ceil__()}:R>\n"
             f"Platform: {track.platform.value}"
         )
 
@@ -65,8 +72,7 @@ class EmbedPlayingTrack(EmbedTrack):
             name="Request Info",
             inline=True,
             value=(
-                f"Requested by {track.requested_by.mention}\n"
-                f"<t:{track.requested_at.timestamp().__ceil__()}:R>\n"
+                f"Requested by {track.requested_by.mention} <t:{track.requested_at.timestamp().__ceil__()}:R>\n"
                 f"Platform: {track.platform.value}"
             ),
         )

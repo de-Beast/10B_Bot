@@ -29,12 +29,11 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
         command: bridge.BridgeExtCommand = self._client.get_command(name)  # type: ignore
         if not command:
             return
+        command.enabled = True
 
-        if _ := not command.enabled:
-            command.enabled = True
         try:
             for check in command.checks:
-                check(ctx)  # type: ignore
+                await check(ctx)  # type: ignore
 
             if command._before_invoke:
                 await command._before_invoke(self, ctx)  # type: ignore
@@ -43,9 +42,9 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
 
             if command._after_invoke:
                 await command._after_invoke(self, ctx)  # type: ignore
-        except commands.CommandOnCooldown:
-            await ctx.send("You are on cooldown", delete_after=3)
-        if _:
+        except commands.CommandError as error:
+            await command.on_error(self, ctx, error) # type: ignore
+        finally:
             command.enabled = False
 
 
