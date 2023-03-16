@@ -8,15 +8,15 @@ from Music_cog import player as plr
 from Music_cog.room import Handlers as Handlers
 
 
-class MainView(ViewABC):
+class PlayerView(ViewABC):
     def __init__(self, *items: ui.Item, timeout=None, disable_on_timeout=False):
         super().__init__(*items, timeout=timeout, disable_on_timeout=disable_on_timeout)
-        self.__looping: Loop = Loop.NOLOOP
+        self.__loop: Loop = Loop.NOLOOP
         self.__shuffle: Shuffle = Shuffle.NOSHUFFLE
 
     @property
-    def looping(self) -> Loop:
-        return self.__looping
+    def loop(self) -> Loop:
+        return self.__loop
 
     @property
     def shuffle(self) -> Shuffle:
@@ -33,7 +33,7 @@ class MainView(ViewABC):
                 case "Loop Select":
                     for option in item.options:
                         if option.default:
-                            view.__looping = Loop.get_key(option.value)
+                            view.__loop = Loop.get_key(option.value)
 
                 case "Shuffle Select":
                     for option in item.options:
@@ -114,12 +114,12 @@ class MainView(ViewABC):
     )
     async def loop_callback(self, select: ui.Select, interaction: discord.Interaction):
         value = select.values[0]
-        self.__looping = Loop.get_key(value)
+        self.__loop = Loop.get_key(value)
 
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
             if isinstance(player, plr.MusicPlayer):
-                player.looping = self.__looping
+                player.looping = self.__loop
 
         for option in select.options:
             if option.value == value:

@@ -8,9 +8,9 @@ class Configuration(Enum):
 
     @classmethod
     def get_key(cls, config: str | Any) -> Self:
-        for conf in cls:
-            if conf.value == config:
-                return conf
+        for _config in cls:
+            if _config.value == config:
+                return _config
         return cls["DEV"]
 
 
@@ -20,10 +20,10 @@ class Loop(Enum):
     ONE = "Loop One"
 
     @classmethod
-    def get_key(cls, looping: str | Any) -> Self:
-        for loop in cls:
-            if loop.value == looping:
-                return loop
+    def get_key(cls, loop: str | Any) -> Self:
+        for _loop in cls:
+            if _loop.value == loop:
+                return _loop
         return cls["NOLOOP"]
 
 
@@ -34,9 +34,9 @@ class Shuffle(Enum):
 
     @classmethod
     def get_key(cls, shuffle: str | Any) -> Self:
-        for shuf in cls:
-            if shuf.value == shuffle:
-                return shuf
+        for _shuffle in cls:
+            if _shuffle.value == shuffle:
+                return _shuffle
         return cls["NOSHUFFLE"]
 
 
@@ -47,21 +47,21 @@ class ThreadType(Enum):
 
     @classmethod
     def get_key(cls, thread_type: str | Any) -> Self | None:
-        for thread in cls:
-            if thread.value == thread_type:
-                return thread
+        for _thread_type in cls:
+            if _thread_type.value == thread_type:
+                return _thread_type
         return None
 
 
 class SearchPlatform(Enum):
-    YOUTUBE: str = "yt"
-    VK: str = "vk"
-    SPOTIFY: str = "spotify"
-    SOUNDCLOUD: str = "soundcloud"
+    YOUTUBE: str = "Youtube"
+    VK: str = "VK"
+    SPOTIFY: str = "Spotify"
+    SOUNDCLOUD: str = "Soundcloud"
 
     @classmethod
     def get_key(cls, platform: str | Any) -> Self:
-        for plat in cls:
-            if plat.value == platform:
-                return plat
+        for _platform in cls:
+            if _platform.value == platform:
+                return _platform
         return cls["YOUTUBE"]
