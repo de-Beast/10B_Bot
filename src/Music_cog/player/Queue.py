@@ -21,9 +21,10 @@ class SimpleQueue(deque):
         self._loop: Loop = Loop.NOLOOP
 
     async def init(self) -> None:
+        if queue_handler := self._queue_handler:
+            await queue_handler.remove_track_message(all=True)
         if player_handler := await PlayerMessageHandler.from_room(Utils.get_music_room(self.guild)):
             self._loop = player_handler.loop
-
     @property
     def _queue_handler(self) -> QueueThreadHandler | None:
         if thread := Utils.get_thread(self.guild, ThreadType.QUEUE):
@@ -161,6 +162,10 @@ class Queue(SimpleQueue):
                 try:
                     self.rotate(-1 * self.index(self.__shuffled_queue._current_track))
                 except ValueError:
+                    self.__shuffle = Shuffle.NOSHUFFLE
+                await super().update_queue(loop)
+                if shuffle is Shuffle.SECRET:
+                    self.is_shuffled = False
                     self.__shuffle = Shuffle.NOSHUFFLE
                 await super().update_queue(loop)
                 if shuffle is Shuffle.SECRET:
