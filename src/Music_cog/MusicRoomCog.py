@@ -86,7 +86,7 @@ class MusicRoomCog(MusicCogABC):
 
         try:
             async for message in room.history():
-                if len(message.embeds) > 0 and self.client.user:
+                if len(message.embeds) > 0 and message.author == self.client.user:
                     break
                 if message.author != self.client.user or include_bot:
                     await message.delete()
