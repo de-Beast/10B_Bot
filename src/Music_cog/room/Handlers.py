@@ -56,7 +56,7 @@ class PlayerMessageHandler(MessageHandler):
     async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
             async for message in room.history():
-                if len(message.embeds) > 0:
+                if len(message.embeds) > 0 and message.author == PlayerMessageHandler._client.user:
                     return message
         except Exception as e:
             logger.error(f"NO MAIN MESSAGE - {e}")
