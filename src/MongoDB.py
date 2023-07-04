@@ -1,20 +1,32 @@
-from typing import Any, Self, TypedDict
+from typing import Self, TypedDict, TYPE_CHECKING
 
 import discord
 import pymongo
+
 from config import Configuration, get_config
 from enums import ThreadType
 from loguru import logger
+
+if TYPE_CHECKING:
+    from pymongo.database import Database
+    from pymongo.collection import Collection
 
 
 class MusicRoomInfo(TypedDict):
     guild_id: int
     room_id: int
-    threads: dict[str | ThreadType, int]
+    threads: dict[ThreadType | str, int]
+
+
+# class MusicRoomInfoDocument(TypedDict):
+#     guild_id: int
+#     room_id: int
+#     threads: dict[str, int]
+
 
 class DataBase:
     __instance: Self | None = None
-    __database: Any = None
+    __database: Database
 
     def __new__(cls):
         if cls.__instance is None:
@@ -23,7 +35,7 @@ class DataBase:
         return cls.__instance
 
     @property
-    def music_rooms_collection(self) -> Any:
+    def music_rooms_collection(self) -> Collection[MusicRoomInfo]:
         match get_config().get("CONFIGURATION"):
             case Configuration.PROD:
                 return self.__database.Music_rooms
@@ -46,16 +58,20 @@ class DataBase:
 
     def update_room_info(self, room_info: MusicRoomInfo):
         if edited_info := convert_music_room_info(room_info):
-            self.music_rooms_collection.update_one({"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True)
+            self.music_rooms_collection.update_one(
+                {"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True
+            )
 
     def get_music_room_id(self, guild: discord.Guild) -> int | None:
         info = self.music_rooms_collection.find_one({"guild_id": guild.id}, {"_id": 0, "room_id": 1})
         return info["room_id"] if info else None
 
     def get_threads_ids(self, guild: discord.Guild) -> dict[ThreadType, int] | None:
-        info: dict[str, Any] = self.music_rooms_collection.find_one({"guild_id": guild.id}, {"_id": 0, "threads": 1})
+        info: MusicRoomInfo | None = self.music_rooms_collection.find_one(
+            {"guild_id": guild.id}, {"_id": 0, "threads": 1}
+        )
         if info is not None:
-            threads_ids: dict[str, int] = info["threads"]
+            threads_ids: dict[str | ThreadType, int] = info["threads"]
             edited_info: dict[ThreadType, int] = {}
             for thread_type in ThreadType:
                 try:
@@ -63,6 +79,7 @@ class DataBase:
                 except KeyError:
                     return None
             return edited_info
+        return None
 
 
 def convert_music_room_info(info: MusicRoomInfo, *, for_storage: bool = True) -> MusicRoomInfo | None:

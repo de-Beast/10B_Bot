@@ -1,14 +1,14 @@
 import asyncio
 import datetime
 
-import Checks
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
-from enums import SearchPlatform, ThreadType
-from Exceptions import NotInVoiceError, WrongVoiceError
 from loguru import logger
 
+import Checks
+from ABC import CogABC
+from enums import SearchPlatform, ThreadType
+from Exceptions import NotInVoiceError, WrongVoiceError
 from Music_cog.player.Track import MetaData
 
 from . import Utils
@@ -16,7 +16,7 @@ from .player import MusicPlayer
 from .room.Handlers import SettingsThreadHandler
 
 
-class MusicPlayerCog(MusicCogABC):
+class MusicPlayerCog(CogABC):
     ############################## Commands #################################
 
     # GROUP - PLAY
@@ -150,4 +150,4 @@ class MusicPlayerCog(MusicCogABC):
 
 
 def setup(client: bridge.Bot):
-    client.add_cog(MusicPlayerCog(client))
+    client.add_cog(MusicPlayerCog())

@@ -1,13 +1,13 @@
 import discord
+from discord.ext import bridge, commands
+from loguru import logger
+
 import MongoDB as mdb
-from ABC import MusicCogABC
+from ABC import CogABC
 from Bot import TenB_Bot
 from config import get_config
-from discord.ext import bridge, commands
 from enums import ThreadType
-from loguru import logger
 from MongoDB import DataBase, MusicRoomInfo
-
 from Music_cog.room.Embeds import EmbedDefault
 from Music_cog.room.Views.PlayerView import PlayerView
 from Music_cog.room.Views.SettingsView import SettingsView
@@ -17,7 +17,7 @@ from .room import Handlers
 from .room.Handlers import PlayerMessageHandler
 
 
-class MusicRoomCog(MusicCogABC):
+class MusicRoomCog(CogABC):
     @staticmethod
     def check_room_correctness(guild: discord.Guild, coll) -> MusicRoomInfo | None:
         info: MusicRoomInfo = coll.find_one({"guild_id": guild.id}, {"_id": 0, "guild_id": 1, "room_id": 1, "threads": 1})
@@ -185,4 +185,4 @@ class MusicRoomCog(MusicCogABC):
 
 def setup(client: TenB_Bot):
     Handlers.setup(client)
-    client.add_cog(MusicRoomCog(client))
+    client.add_cog(MusicRoomCog())

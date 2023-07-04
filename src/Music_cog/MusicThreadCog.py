@@ -1,12 +1,13 @@
 import re
 
-import Checks
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
+from loguru import logger
+
+import Checks
+from ABC import CogABC
 from enums import SearchPlatform, ThreadType
 from Exceptions import NotInVoiceError, WrongTextChannelError
-from loguru import logger
 
 from . import Utils
 from .room.Handlers import (
@@ -16,7 +17,7 @@ from .room.Handlers import (
 )
 
 
-class MusicThreadCog(MusicCogABC):
+class MusicThreadCog(CogABC):
     async def clear_thread_from_reactions(self, guild: discord.Guild) -> None:
         threads = [Utils.get_thread(guild, thread_type) for thread_type in ThreadType]
         for thread in threads:
@@ -108,4 +109,4 @@ class MusicThreadCog(MusicCogABC):
 
 
 def setup(client: bridge.Bot):
-    client.add_cog(MusicThreadCog(client))
+    client.add_cog(MusicThreadCog())
