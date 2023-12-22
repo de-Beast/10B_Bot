@@ -36,5 +36,5 @@ urllib3==2.0.4
 websockets==11.0.3
 win32-setctime==1.1.0
 yarl==1.9.2
-yt-dlp==2023.7.6
+yt-dlp==2023.11.14
 ytdlp-plugins==2023.1.11
