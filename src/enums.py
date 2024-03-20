@@ -30,7 +30,6 @@ class Loop(Enum):
 class Shuffle(Enum):
     NOSHUFFLE: str = "No Shuffle"
     SHUFFLE: str = "Shuffle"
-    SECRET: str = "Secret Shuffle"
 
     @classmethod
     def get_key(cls, shuffle: str | Any) -> Self:

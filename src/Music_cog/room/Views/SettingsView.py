@@ -1,8 +1,9 @@
 from typing import Self
 
 import discord
-from ABC import ViewABC
 from discord import ui
+
+from ABC import ViewABC
 from enums import SearchPlatform
 
 
@@ -29,7 +30,9 @@ class SettingsView(ViewABC):
         custom_id="Search Platform Select",
         row=1,
         options=[
-            discord.SelectOption(label="Youtube", value=SearchPlatform.YOUTUBE.value, emoji="🐷", default=True),  # Youtube
+            discord.SelectOption(
+                label="Youtube", value=SearchPlatform.YOUTUBE.value, emoji="🐷", default=True  # Youtube
+            ),
             discord.SelectOption(label="VK", value=SearchPlatform.VK.value, emoji="🐭"),  # VK
         ],
     )
