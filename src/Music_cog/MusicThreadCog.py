@@ -1,12 +1,13 @@
 import re
 
-import Checks
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
+from loguru import logger
+
+import Checks
+from ABC import MusicCogABC
 from enums import SearchPlatform, ThreadType
 from Exceptions import NotInVoiceError, WrongTextChannelError
-from loguru import logger
 
 from . import Utils
 from .room.Handlers import (
@@ -50,7 +51,7 @@ class MusicThreadCog(MusicCogABC):
                     search_platform = SearchPlatform.get_key(match.group(0))
                     break
         setattr(new_ctx, "search_platform", search_platform)
-        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name}")
+        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name if embed.author else ''}")
         await ctx.respond(content="Track is added from history", ephemeral=True, delete_after=5)
 
     @add_track_from_history.error

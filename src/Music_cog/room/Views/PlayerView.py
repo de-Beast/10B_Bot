@@ -1,8 +1,9 @@
 from typing import Any, Self
 
 import discord
-from ABC import ViewABC
 from discord import ui
+
+from ABC import ViewABC
 from enums import Loop, Shuffle
 from Music_cog import player as plr
 from Music_cog.room import Handlers as Handlers
@@ -138,7 +139,6 @@ class PlayerView(ViewABC):
                 default=True,
             ),
             discord.SelectOption(label="Shuffle", emoji="🔀"),  # shuffle
-            discord.SelectOption(label="Secret Shuffle", emoji="🔒"),  # secret shuffle
         ],
     )
     async def shuffle_callback(self, select: ui.Select, interaction: discord.Interaction):
@@ -157,18 +157,9 @@ class PlayerView(ViewABC):
                         option.default = True
                     case "Shuffle":
                         select.placeholder = "🔀 Queue is shuffled"
-                    case "Secret Shuffle":
-                        option = select.options[2]
-                        option.default = True
                 await interaction.response.edit_message(view=self)
-                player.shuffle = self.__shuffle
-                # handler = await Handlers.PlayerMessageHandler.with_message_from_room(
-                #     Utils.get_music_room(interaction.guild)
-                # )
-                # if handler:
-                #     await handler.update_embed(
-                #         interaction.guild, player.track, self.shuffle
-                #     )
+                await player.set_shuffle(self.__shuffle)
+                # player.shuffle = self.__shuffle
                 return
 
         option.default = True

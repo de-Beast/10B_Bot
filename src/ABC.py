@@ -1,10 +1,11 @@
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Self
 
-import Bot
 import discord
 from discord import ui
 from discord.ext import bridge, commands
+
+import Bot
 
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):
@@ -43,7 +44,7 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
             if command._after_invoke:
                 await command._after_invoke(self, ctx)  # type: ignore
         except commands.CommandError as error:
-            await command.on_error(self, ctx, error) # type: ignore
+            await command.on_error(self, ctx, error)  # type: ignore
         finally:
             command.enabled = False
 
