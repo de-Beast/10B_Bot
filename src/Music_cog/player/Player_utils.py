@@ -78,7 +78,9 @@ def search_yt_list(search_method: str, request_data: MetaData) -> Generator[Trac
         )
 
 
-def get_vk_album(owner_id: int, id: int, key: str | None, request_data: MetaData) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(
+    owner_id: int, id: int, key: str | None, request_data: MetaData
+) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -105,6 +107,7 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
     logger.info("single vk")
     if not id:
         return None
+
     api = get_api()
     audio = api.method("audio.getById", audios=id)
     if len(audio) == 0:
@@ -115,7 +118,7 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
             "meta": {
                 "title": audio[0]["title"],
                 "author": audio[0]["artist"],
-                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else None,
+                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else "",
                 "platform": request_data["platform"],
                 "requested_by": request_data["requested_by"],
                 "requested_at": request_data["requested_at"],
@@ -127,7 +130,9 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
 
 
 async def define_stream_method(item: str, request_data: MetaData) -> list[TrackInfo | None]:
-    yt = fullmatch(r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-_]+)(&list=)?([a-zA-Z0-9+\-_]+)", item)
+    yt = fullmatch(
+        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-_]+)(&list=)?([a-zA-Z0-9+\-_]+)", item
+    )
     yt_list = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",
         item,

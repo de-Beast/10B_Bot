@@ -20,7 +20,9 @@ class TenB_Bot(bridge.Bot):
         logger.success("Bot is ready")
 
     async def on_command_error(
-        self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext, error: commands.CommandError  # type: ignore
+        self,
+        ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext,  # type: ignore
+        error: commands.CommandError,
     ) -> None:
         if isinstance(error, NotInVoiceError):
             await ctx.respond(content=error.args[0], ephemeral=True, delete_after=5)
