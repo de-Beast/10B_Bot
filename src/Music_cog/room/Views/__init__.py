@@ -1,7 +1,7 @@
 from ABC import ViewABC
 from Bot import TenB_Bot
 
-from .MainView import MainView
+from .PlayerView import PlayerView
 from .SettingsView import SettingsView
 
 

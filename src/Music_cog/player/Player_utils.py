@@ -3,8 +3,9 @@ from time import sleep
 from typing import Generator
 
 import yt_dlp as ytdl  # type: ignore
-from enums import SearchPlatform
 from loguru import logger
+
+from enums import SearchPlatform
 from vk_api import get_api
 
 from .Track import MetaData, TrackInfo
@@ -37,13 +38,14 @@ def search_yt_single(search_method: str, request_data: MetaData) -> TrackInfo | 
                 "source": info["url"],
                 "meta": {
                     "title": info["title"],
-                    "artist": info["uploader"],
+                    "author": info["uploader"],
                     "thumbnail": info["thumbnail"],
+                    "platform": request_data["platform"],
                     "requested_by": request_data["requested_by"],
                     "requested_at": request_data["requested_at"],
                 },
                 "track_url": info["webpage_url"],
-                "artist_url": info["uploader_url"],
+                "author_url": info["uploader_url"],
             }
         )
         if info
@@ -64,18 +66,21 @@ def search_yt_list(search_method: str, request_data: MetaData) -> Generator[Trac
                 "source": info["formats"][0]["url"],
                 "meta": {
                     "title": info["title"],
-                    "artist": info["uploader"],
+                    "author": info["uploader"],
                     "thumbnail": info["thumbnails"][-1]["url"],
+                    "platform": request_data["platform"],
                     "requested_by": request_data["requested_by"],
                     "requested_at": request_data["requested_at"],
                 },
                 "track_url": info["webpage_url"],
-                "artist_url": info["uploader_url"],
+                "author_url": info["uploader_url"],
             }
         )
 
 
-def get_vk_album(owner_id: int, id: int, key: str | None, request_data: MetaData) -> Generator[TrackInfo | None, None, None]:
+def get_vk_album(
+    owner_id: int, id: int, key: str | None, request_data: MetaData
+) -> Generator[TrackInfo | None, None, None]:
     logger.info("album vk")
     api = get_api()
     audios = api.method("audio.get", owner_id=owner_id, album_id=id, access_key=key)
@@ -102,6 +107,7 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
     logger.info("single vk")
     if not id:
         return None
+
     api = get_api()
     audio = api.method("audio.getById", audios=id)
     if len(audio) == 0:
@@ -111,19 +117,22 @@ def get_vk_single(id: str | None, request_data: MetaData) -> TrackInfo | None:
             "source": audio[0]["url"],
             "meta": {
                 "title": audio[0]["title"],
-                "artist": audio[0]["artist"],
-                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else None,
+                "author": audio[0]["artist"],
+                "thumbnail": audio[0]["album"]["thumb"]["photo_1200"] if "album" in audio[0] else "",
+                "platform": request_data["platform"],
                 "requested_by": request_data["requested_by"],
                 "requested_at": request_data["requested_at"],
             },
             "track_url": audio[0]["url"],
-            "artist_url": audio[0]["url"],
+            "author_url": audio[0]["url"],
         }
     )
 
 
-async def define_stream_method(item: str, search_platform: SearchPlatform, request_data: MetaData) -> list[TrackInfo | None]:
-    yt = fullmatch(r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-]+)", item)
+async def define_stream_method(item: str, request_data: MetaData) -> list[TrackInfo | None]:
+    yt = fullmatch(
+        r"https?://(?:www\.)?youtu(?:\.be|be\.com)/watch\?v=([a-zA-Z0-9+\-_]+)(&list=)?([a-zA-Z0-9+\-_]+)", item
+    )
     yt_list = fullmatch(
         r"https?://(?:www\.)?youtu(?:\.be|be\.com)/playlist\?list=([a-zA-Z0-9_\-]+)",
         item,
@@ -147,7 +156,7 @@ async def define_stream_method(item: str, search_platform: SearchPlatform, reque
     if vk_list:
         key: str | None = str(vk_list[3]) if len(vk_list.groups()) > 2 else None
         return list(get_vk_album(int(vk_list[1]), int(vk_list[2]), key, request_data))
-    match search_platform:
+    match request_data["platform"]:
         case SearchPlatform.YOUTUBE:
             return [search_yt_single("ytsearch:" + item, request_data)]
         case SearchPlatform.VK:

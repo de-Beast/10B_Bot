@@ -1,5 +1,5 @@
-import random
-from typing import TYPE_CHECKING, Any, Self
+import re
+from typing import Self
 
 import discord
 from loguru import logger
@@ -10,47 +10,14 @@ from enums import SearchPlatform, Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
-from .message_config import message_config
-from .Views import MainView, SettingsView, setup_view_client
-
-if TYPE_CHECKING:
-    pass
-
-
-def rofl(requester: discord.User | discord.Member) -> str:
-    rofl_str = " – "
-    match requester.id:
-        case 447849746586140672:
-            rofl_str += random.choice(("ПОПУЩЕНЕЦ", "ОБСОСИК", "БЕРСЕРК ГАВНИЩЕ ЕБУЧЕЕ"))
-        case 446753575465385998:
-            rofl_str += random.choice(
-                (
-                    "ВОТ БЫ ТЫ НЕ РАЗГОВАРИВАЛ",
-                    "ЖИРНОЕ ЧМО",
-                    "КАКАЯ ЖЕ НАСТЕНЬКА ОХУИТЕЛЬНАЯ",
-                )
-            )
-        case 309011989286354944:
-            rofl_str += random.choice(("МОЯ СЛАДЕНЬКАЯ БУЛОЧКА", "АНИМЕШНИК", "ТРАХНИ МЕНЯ"))
-        case 600361186495692801:
-            rofl_str += random.choice(("ЛУЧШИЙ В МИРЕ", "СПАСИБО ЗА БОТА", "АПНУЛ ВТОРУЮ ПЛАТИНУ"))
-    return rofl_str if len(rofl_str) > 3 else ""
+from .Embeds import (EmbedDefault, EmbedPlayingTrack, EmbedTrack,
+                     set_discription_from_track)
+from .Views import PlayerView, SettingsView, setup_view_client
 
 
 def setup(client: TenB_Bot):
     setup_view_client(client)
     HandlerABC._client = client
-
-
-def create_default_embed_properties(guild: discord.Guild | None = None) -> dict:
-    properties: dict[str, Any] = {"type": "rich", "color": 0x00FF00}
-    if guild is not None:
-        description = "|"
-        for thread_type in ThreadType:
-            thread = Utils.get_thread(guild, thread_type)
-            description += f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
-        properties.update(description=description)
-    return properties
 
 
 class MessageHandler(HandlerABC):
@@ -61,43 +28,22 @@ class MessageHandler(HandlerABC):
     def message(self):
         return self.__message
 
-    @staticmethod
-    def create_embed_from_track(track: Track, number: int | None = None) -> discord.Embed:
-        settings = {
-            "title": track.title,
-            "timestamp": str(track.requested_at),
-            "url": track.track_url,
-            "author": {"name": f"{number}. {track.artist}" if number else f"{track.artist}", "url": track.artist_url},
-            "description": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
-                            <t:{track.requested_at.timestamp().__ceil__()}:R>",
-        }
-        default_properties = create_default_embed_properties()
-        settings.update(default_properties)
-
-        embed = discord.Embed.from_dict(settings)
-        return embed
-
-    async def update_embed_with_embed(self, embed: discord.Embed) -> discord.Embed:
-        next_embed = self.__message.embeds[0]
-        await self.message.edit(embed=embed)
-        return next_embed
-
 
 class PlayerMessageHandler(MessageHandler):
     @property
-    def looping(self):
-        return MainView.from_message(self.message).looping
+    def loop(self):
+        return PlayerView.from_message(self.message).loop
 
     @property
     def shuffle(self):
-        return MainView.from_message(self.message).shuffle
+        return PlayerView.from_message(self.message).shuffle
 
     @property
     def channel(self):
         return self.message.channel
 
     @classmethod
-    async def with_message_from_room(cls, room: discord.TextChannel | None) -> Self | None:
+    async def from_room(cls, room: discord.TextChannel | None) -> Self | None:
         if room:
             message = await cls.get_main_message(room)
         return cls(message) if room and message else None
@@ -105,76 +51,25 @@ class PlayerMessageHandler(MessageHandler):
     @staticmethod
     async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
-            async for message in room.history(oldest_first=True):
-                if len(message.embeds) > 0:
+            async for message in room.history():
+                if len(message.embeds) > 0 and message.author == PlayerMessageHandler._client.user:
                     return message
         except Exception as e:
             logger.error(f"NO MAIN MESSAGE - {e}")
         return None
 
-    @staticmethod
-    def create_main_view() -> MainView:
-        return MainView()
-
     async def update_main_view(self):
-        backed_view = MainView.from_message(self.message)
-        backed_view.set_to_default_view()
-        await self.message.edit(view=backed_view)
-        self.client.add_view(MainView(), message_id=self.message.id)
+        view = PlayerView.from_message(self.message)
+        view.set_to_default_view()
+        await self.message.edit(view=view)
+        self.client.add_view(PlayerView(), message_id=self.message.id)
 
-    @staticmethod
-    def create_embed(
-        guild: discord.Guild,
-        settings: dict | None = None,
-        shuffle: Shuffle | None = None,
-    ) -> discord.Embed:
-        if shuffle is None:
-            shuffle = Shuffle.NOSHUFFLE
-        match shuffle:
-            case Shuffle.NOSHUFFLE:
-                footer = "Using default queue"
-            case Shuffle.SHUFFLE:
-                footer = "Using shuffled queue"
-            case Shuffle.SECRET:
-                footer = "Using secretly shuffled queue"
-        if settings is None:
-            settings = {
-                "title": "Queue is clear",
-                "image": {"url": message_config["back_image"]},
-            }
-        default_properties = create_default_embed_properties(guild)
-        settings.update(default_properties, footer={"text": footer})
-
-        embed = discord.Embed.from_dict(settings)
-        return embed
-
-    async def update_embed(
-        self,
-        guild: discord.Guild,
-        track: Track | None = None,
-        shuffle: Shuffle | None = None,
+    async def update_playing_track_embed(
+        self, guild: discord.Guild, track: Track | None = None, shuffle: Shuffle = Shuffle.NOSHUFFLE
     ):
-        settings = None
-        if track is not None:
-            settings = {
-                "title": track.title,
-                "type": "rich",
-                "color": 0x00FF00,
-                "timestamp": str(track.requested_at),
-                "url": track.track_url,
-                "author": {"name": track.artist, "url": track.artist_url},
-                "image": {"url": track.thumbnail},
-                "fields": [
-                    {
-                        "name": "Request Info",
-                        "inline": True,
-                        "value": f"Requested by {track.requested_by.mention}{rofl(track.requested_by)}\n\
-                                <t:{track.requested_at.timestamp().__ceil__()}:R>",
-                    },
-                ],
-            }
-        new_embed = self.create_embed(guild, settings, shuffle)
-        await self.message.edit(embed=new_embed)
+        await self.message.edit(
+            embed=EmbedPlayingTrack(guild, track, shuffle) if track else EmbedDefault(guild, shuffle)
+        )
 
 
 class SettingsThreadHandler(ThreadHandlerABC):
@@ -182,7 +77,9 @@ class SettingsThreadHandler(ThreadHandlerABC):
     async def search_platform(self) -> SearchPlatform:
         thread_message: discord.Message | None = await self.get_thread_message(self.thread)
         return (
-            SettingsView.from_message(thread_message).search_platform if thread_message is not None else SearchPlatform.YOUTUBE
+            SettingsView.from_message(thread_message).search_platform
+            if thread_message is not None
+            else SearchPlatform.YOUTUBE
         )
 
     @staticmethod
@@ -193,10 +90,6 @@ class SettingsThreadHandler(ThreadHandlerABC):
         except Exception as e:
             logger.warning("NO THREAD MESSAGE FOR U @", e)
         return None
-
-    @staticmethod
-    def create_settings_view() -> SettingsView:
-        return SettingsView()
 
     async def update_thread_views(self):
         thread_message = await self.get_thread_message(self.thread)
@@ -212,8 +105,7 @@ class QueueThreadHandler(ThreadHandlerABC):
             await self.thread.purge(limit=1, check=lambda m: m.author == self.client.user, oldest_first=True)
             await self.update_track_numbers()
 
-        embed = MessageHandler.create_embed_from_track(track, track_number)
-        await self.thread.send(embed=embed)
+        await self.thread.send(embed=EmbedTrack(track, track_number))
 
     async def remove_track_message(self, /, *, all: bool = False) -> None:
         await self.thread.purge(
@@ -240,8 +132,22 @@ class QueueThreadHandler(ThreadHandlerABC):
 
 class HistoryThreadHandler(ThreadHandlerABC):
     async def store_track_in_history(self, track: Track) -> None:
-        embed = MessageHandler.create_embed_from_track(track)
-        await self.thread.send(embed=embed)
+        async for message in self.thread.history():
+            if len(message.embeds) > 0:
+                embed = message.embeds[0]
+                if (
+                    embed.author.name == track.author
+                    and embed.title == track.title
+                    and isinstance(embed.description, str)
+                ):
+                    for search_plat in SearchPlatform:
+                        if re.search(search_plat.value, embed.description):
+                            match = re.search(r"\d+", message.clean_content)
+                            content = f"{int(match.group()) + 1} times" if match else "2 times"
+                            await message.edit(content=content, embed=set_discription_from_track(embed, track))
+                            return
+                break
+        await self.thread.send(embed=EmbedTrack(track))
 
 
 async def update_threads_views(guild: discord.Guild):

@@ -1,15 +1,24 @@
+import re
+
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
-from enums import ThreadType
 from loguru import logger
 
+import Checks
+from ABC import CogABC
+from enums import SearchPlatform, ThreadType
+from Exceptions import NotInVoiceError, WrongTextChannelError
+
 from . import Utils
-from .room.Handlers import HistoryThreadHandler, QueueThreadHandler, SettingsThreadHandler
+from .room.Handlers import (
+    HistoryThreadHandler,
+    QueueThreadHandler,
+    SettingsThreadHandler,
+)
 
 
-class MusicThreadCog(MusicCogABC):
-    async def clear_room_from_reactions(self, guild: discord.Guild):
+class MusicThreadCog(CogABC):
+    async def clear_thread_from_reactions(self, guild: discord.Guild) -> None:
         threads = [Utils.get_thread(guild, thread_type) for thread_type in ThreadType]
         for thread in threads:
             if thread:
@@ -21,12 +30,39 @@ class MusicThreadCog(MusicCogABC):
                 except discord.HTTPException as e:
                     logger.error("HTTP Error: ", e)
 
+    async def clear_room_from_user_messages(self, guild: discord.Guild) -> None:
+        ...
+
     ############################ Commands ###############################
 
-    # @commands.slash_command(name="swap")
-    # async def swap_tracks(self, ctx: discord.ApplicationContext,
-    #                       track: discord.Option(input_type=str|int, )):
-    #     pass
+    @commands.message_command(name="Add From History")
+    @Checks.is_history_thread()
+    @Checks.permissions_for_play()
+    @Checks.is_connected(False)
+    async def add_track_from_history(self, ctx: discord.ApplicationContext, message: discord.Message) -> None:
+        await ctx.defer(ephemeral=True, invisible=False)
+        embed = message.embeds[0]
+        new_ctx = await self.client.get_context(message)
+        new_ctx.author = ctx.author
+        search_platform: SearchPlatform | None = None
+        if isinstance(embed.description, str):
+            for search_plat in SearchPlatform:
+                if match := re.search(search_plat.value, embed.description):
+                    search_platform = SearchPlatform.get_key(match.group(0))
+                    break
+        setattr(new_ctx, "search_platform", search_platform)
+        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name if embed.author else ''}")
+        await ctx.respond(content="Track is added from history", ephemeral=True, delete_after=5)
+
+    @add_track_from_history.error
+    async def add_track_from_history_error(self, ctx: discord.ApplicationContext, error: commands.CommandError) -> None:
+        if isinstance(error, WrongTextChannelError):
+            await ctx.respond(content=error.args[0], ephemeral=True, delete_after=5)
+        elif isinstance(error, NotInVoiceError):
+            await ctx.respond(content=error.args[0], ephemeral=True, delete_after=5)
+        elif isinstance(error, commands.BotMissingPermissions):
+            message = f"Bot is missing {' and '.join(error.missing_permissions)} permissions to join the voice channel"
+            await ctx.respond(content=message, ephemeral=True, delete_after=5)
 
     ############################# Listeners #############################
 
@@ -50,13 +86,13 @@ class MusicThreadCog(MusicCogABC):
 
                 handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
-                
+
                 handler = HistoryThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
             except Exception as e:
                 logger.error(f"{e}")
             finally:
-                await self.clear_room_from_reactions(guild)
+                await self.clear_thread_from_reactions(guild)
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def clear_reactions_on_reaction_add(self, raw_reaction: discord.RawReactionActionEvent):
@@ -73,4 +109,4 @@ class MusicThreadCog(MusicCogABC):
 
 
 def setup(client: bridge.Bot):
-    client.add_cog(MusicThreadCog(client))
+    client.add_cog(MusicThreadCog())
