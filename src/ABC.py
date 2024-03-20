@@ -1,10 +1,11 @@
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Self
 
-import Bot
 import discord
 from discord import ui
 from discord.ext import bridge, commands
+
+import Bot
 
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):

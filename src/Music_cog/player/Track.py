@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Self, TypedDict
 
 import discord
+
 from enums import SearchPlatform
 
 FFMPEG_OPTIONS = {

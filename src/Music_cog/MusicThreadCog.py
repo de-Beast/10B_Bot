@@ -51,7 +51,7 @@ class MusicThreadCog(CogABC):
                     search_platform = SearchPlatform.get_key(match.group(0))
                     break
         setattr(new_ctx, "search_platform", search_platform)
-        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name}")
+        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name if embed.author else ''}")
         await ctx.respond(content="Track is added from history", ephemeral=True, delete_after=5)
 
     @add_track_from_history.error

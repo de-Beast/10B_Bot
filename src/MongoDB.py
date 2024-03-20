@@ -2,10 +2,10 @@ from typing import Self, TypedDict, TYPE_CHECKING
 
 import discord
 import pymongo
+from loguru import logger
 
 from config import Configuration, get_config
 from enums import ThreadType
-from loguru import logger
 
 if TYPE_CHECKING:
     from pymongo.database import Database
@@ -16,12 +16,6 @@ class MusicRoomInfo(TypedDict):
     guild_id: int
     room_id: int
     threads: dict[ThreadType | str, int]
-
-
-# class MusicRoomInfoDocument(TypedDict):
-#     guild_id: int
-#     room_id: int
-#     threads: dict[str, int]
 
 
 class DataBase:
