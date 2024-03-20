@@ -1,13 +1,14 @@
 import discord
+from discord.ext import bridge, commands
+from loguru import logger
+from pymongo.collection import Collection
+
 import MongoDB as mdb
 from ABC import MusicCogABC
 from Bot import TenB_Bot
 from config import get_config
-from discord.ext import bridge, commands
 from enums import ThreadType
-from loguru import logger
 from MongoDB import DataBase, MusicRoomInfo
-
 from Music_cog.room.Embeds import EmbedDefault
 from Music_cog.room.Views.PlayerView import PlayerView
 from Music_cog.room.Views.SettingsView import SettingsView
@@ -19,11 +20,15 @@ from .room.Handlers import PlayerMessageHandler
 
 class MusicRoomCog(MusicCogABC):
     @staticmethod
-    def check_room_correctness(guild: discord.Guild, coll) -> MusicRoomInfo | None:
-        info: MusicRoomInfo = coll.find_one({"guild_id": guild.id}, {"_id": 0, "guild_id": 1, "room_id": 1, "threads": 1})
+    def check_room_correctness(guild: discord.Guild, coll: Collection[MusicRoomInfo]) -> MusicRoomInfo | None:
+        info: MusicRoomInfo | None = coll.find_one(
+            {"guild_id": guild.id}, {"_id": 0, "guild_id": 1, "room_id": 1, "threads": 1}
+        )
         if info is not None:
             guild_channel = guild.get_channel(info["room_id"])
-            music_room: discord.TextChannel | None = guild_channel if isinstance(guild_channel, discord.TextChannel) else None
+            music_room: discord.TextChannel | None = (
+                guild_channel if isinstance(guild_channel, discord.TextChannel) else None
+            )
             if music_room is None:
                 return None
 
@@ -112,7 +117,7 @@ class MusicRoomCog(MusicCogABC):
 
     @bridge.bridge_command(name="delete-music-room", aliases=["delete_room", "delete_music_room"], enabled=False)
     @commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator=True))  # type: ignore
-    async def delete(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> None:
+    async def delete(self, ctx: bridge.BridgeApplicationContext) -> None:
         if music_room := Utils.get_music_room(ctx.guild):
             await music_room.delete()
             await ctx.respond(content="Music room is deleted", ephemeral=True, delete_after=5)
@@ -124,7 +129,7 @@ class MusicRoomCog(MusicCogABC):
         enabled=False,
     )
     @commands.check_any(commands.is_owner(), commands.has_guild_permissions(administrator=True))  # type: ignore
-    async def create_music_room_command(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> None:
+    async def create_music_room_command(self, ctx: bridge.BridgeApplicationContext) -> None:
         room_info = await self.create_music_room(ctx.guild)
         DataBase().update_room_info(room_info)
         await ctx.respond(content="New music room is created", ephemeral=True, delete_after=5)
@@ -163,7 +168,7 @@ class MusicRoomCog(MusicCogABC):
         if not isinstance(channel, discord.TextChannel):
             return
 
-        message: discord.Message = await channel.fetch_message(raw_reaction.message_id)
+        message = await channel.fetch_message(raw_reaction.message_id)
         if message.channel == Utils.get_music_room(message.guild):
             await message.clear_reactions()
 

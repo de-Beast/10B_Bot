@@ -3,9 +3,9 @@ from threading import Condition, Thread
 
 import discord
 from discord.ext import bridge, tasks
-from enums import Loop, Shuffle
 from loguru import logger
 
+from enums import Loop, Shuffle
 from Music_cog import Utils
 from Music_cog.room.Handlers import PlayerMessageHandler
 
@@ -22,7 +22,6 @@ def _notify_and_close_condition(cond: Condition):
 
 
 class MusicPlayer(discord.VoiceClient):
-    # TODO: Сделать работу с плейлистами (вроде изи)
     def __init__(self, client: bridge.Bot, channel: discord.VoiceChannel):
         super().__init__(client, channel)
         self.disconnect_timeout.start()
@@ -58,9 +57,8 @@ class MusicPlayer(discord.VoiceClient):
     def shuffle(self) -> Shuffle:
         return self._queue.shuffle
 
-    @shuffle.setter
-    def shuffle(self, shuffle_type: Shuffle):
-        self._queue.shuffle = shuffle_type
+    async def set_shuffle(self, shuffle_type: Shuffle):
+        await self._queue.set_shuffle(shuffle_type)
 
     async def play_next(self, loop: asyncio.AbstractEventLoop):
         cond = Condition()
