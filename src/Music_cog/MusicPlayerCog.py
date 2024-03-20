@@ -1,14 +1,14 @@
 import asyncio
 import datetime
 
-import Checks
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
-from enums import SearchPlatform, ThreadType
-from Exceptions import NotInVoiceError, WrongVoiceError
 from loguru import logger
 
+import Checks
+from ABC import MusicCogABC
+from enums import SearchPlatform, ThreadType
+from Exceptions import NotInVoiceError, WrongVoiceError
 from Music_cog.player.Track import MetaData
 
 from . import Utils
@@ -33,7 +33,8 @@ class MusicPlayerCog(MusicCogABC):
     @Checks.is_connected(user_bot_same_voice=False)
     @commands.cooldown(1, 5, commands.BucketType.default)
     @discord.option("query", str, description="Query to search")
-    async def play(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext, *, query: str):
+    # async def play(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext, *, query: str):
+    async def play(self, ctx: bridge.BridgeApplicationContext, *, query: str):
         await ctx.defer(ephemeral=True)
         if not isinstance(player := ctx.voice_client, MusicPlayer):
             return
@@ -47,9 +48,11 @@ class MusicPlayerCog(MusicCogABC):
         search_platform: SearchPlatform = getattr(
             ctx,
             "search_platform",
-            await SettingsThreadHandler(thread).search_platform
-            if (thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS))
-            else SearchPlatform.YOUTUBE,
+            (
+                await SettingsThreadHandler(thread).search_platform
+                if (thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS))
+                else SearchPlatform.YOUTUBE
+            ),
         )
         request_data = MetaData(
             {
@@ -66,34 +69,40 @@ class MusicPlayerCog(MusicCogABC):
             await ctx.respond(content="Track is successfully added", ephemeral=True, delete_after=5)
 
     @play.before_invoke
-    async def connection_to_voice_channel(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> None:
+    async def connection_to_voice_channel(self, ctx: bridge.BridgeApplicationContext) -> None:
+        if isinstance(ctx.author, discord.User) or ctx.author is None:
+            return
+        if ctx.author.voice is None or ctx.author.voice.channel is None:
+            return
+
         if ctx.voice_client is None:
-            player = await ctx.author.voice.channel.connect(reconnect=True, cls=MusicPlayer)
+            player: MusicPlayer = await ctx.author.voice.channel.connect(cls=lambda client, connectable: MusicPlayer(client, connectable), reconnect=True)  # type: ignore
             await player.init()
         elif ctx.author.voice.channel != ctx.voice_client.channel:
             most_authoritative_role: discord.Role | None = None
             if isinstance(ctx.voice_client, MusicPlayer) and isinstance(
-                ctx.voice_client.channel,
-                (discord.VoiceChannel, discord.StageChannel),
+                ctx.voice_client.channel, (discord.VoiceChannel, discord.StageChannel)
             ):
                 for member in ctx.voice_client.channel.members:
                     if most_authoritative_role is None or most_authoritative_role > member.top_role:
                         most_authoritative_role = member.top_role
-                if most_authoritative_role <= ctx.author.top_role:
+                if most_authoritative_role is not None and most_authoritative_role <= ctx.author.top_role:
                     await ctx.voice_client.move_to(ctx.author.voice.channel)
                 else:
                     raise WrongVoiceError
 
     @play.error
     async def play_command_error(
-        self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext, error: commands.CommandError
+        self, ctx: bridge.BridgeApplicationContext, error: commands.CommandError
     ) -> None:
         if isinstance(error, NotInVoiceError):
             if isinstance(ctx.voice_client, MusicPlayer) and ctx.voice_client.has_track:
                 message = f"The Bot is currently playing music, try to join {ctx.me.voice.channel.mention}"
                 await ctx.respond(content=message, ephemeral=True, delete_after=5)
             else:
-                message = "You are not in the voice channel, command will be reinvoked after this message is being deleted"
+                message = (
+                    "You are not in the voice channel, command will be reinvoked after this message is being deleted"
+                )
                 await ctx.respond(content=message, ephemeral=True, delete_after=5)
                 try:
                     await self.client.wait_for(
@@ -121,16 +130,16 @@ class MusicPlayerCog(MusicCogABC):
 
     @bridge.bridge_command(name="disconnect", aliases=["dis", "d", "leave"], enabled=False)
     @Checks.is_connected()
-    async def disconnect(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext):
+    async def disconnect(self, ctx: bridge.BridgeApplicationContext):
         if isinstance(ctx.voice_client, MusicPlayer):
             await ctx.voice_client.disconnect()
             await ctx.respond(content="Disconnected", ephemeral=True, delete_after=5)
 
-        ############################# Listeners #############################
+    ############################## Listeners ################################
 
     @commands.Cog.listener("on_command_error")
     async def on_command_error(
-        self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext, error: commands.CommandError
+        self, ctx: bridge.BridgeApplicationContext, error: commands.CommandError
     ):
         if isinstance(error, commands.CommandNotFound):
             return

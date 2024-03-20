@@ -2,15 +2,17 @@ from typing import Any, Self, TypedDict
 
 import discord
 import pymongo
+from loguru import logger
+
 from config import Configuration, get_config
 from enums import ThreadType
-from loguru import logger
 
 
 class MusicRoomInfo(TypedDict):
     guild_id: int
     room_id: int
     threads: dict[str | ThreadType, int]
+
 
 class DataBase:
     __instance: Self | None = None
@@ -46,7 +48,9 @@ class DataBase:
 
     def update_room_info(self, room_info: MusicRoomInfo):
         if edited_info := convert_music_room_info(room_info):
-            self.music_rooms_collection.update_one({"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True)
+            self.music_rooms_collection.update_one(
+                {"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True
+            )
 
     def get_music_room_id(self, guild: discord.Guild) -> int | None:
         info = self.music_rooms_collection.find_one({"guild_id": guild.id}, {"_id": 0, "room_id": 1})

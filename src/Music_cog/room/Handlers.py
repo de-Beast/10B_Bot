@@ -10,12 +10,8 @@ from enums import SearchPlatform, Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
-from .Embeds import (
-    EmbedDefault,
-    EmbedPlayingTrack,
-    EmbedTrack,
-    set_discription_from_track,
-)
+from .Embeds import (EmbedDefault, EmbedPlayingTrack, EmbedTrack,
+                     set_discription_from_track)
 from .Views import PlayerView, SettingsView, setup_view_client
 
 
@@ -71,7 +67,9 @@ class PlayerMessageHandler(MessageHandler):
     async def update_playing_track_embed(
         self, guild: discord.Guild, track: Track | None = None, shuffle: Shuffle = Shuffle.NOSHUFFLE
     ):
-        await self.message.edit(embed=EmbedPlayingTrack(guild, track, shuffle) if track else EmbedDefault(guild, shuffle))
+        await self.message.edit(
+            embed=EmbedPlayingTrack(guild, track, shuffle) if track else EmbedDefault(guild, shuffle)
+        )
 
 
 class SettingsThreadHandler(ThreadHandlerABC):
@@ -79,7 +77,9 @@ class SettingsThreadHandler(ThreadHandlerABC):
     async def search_platform(self) -> SearchPlatform:
         thread_message: discord.Message | None = await self.get_thread_message(self.thread)
         return (
-            SettingsView.from_message(thread_message).search_platform if thread_message is not None else SearchPlatform.YOUTUBE
+            SettingsView.from_message(thread_message).search_platform
+            if thread_message is not None
+            else SearchPlatform.YOUTUBE
         )
 
     @staticmethod
@@ -135,7 +135,11 @@ class HistoryThreadHandler(ThreadHandlerABC):
         async for message in self.thread.history():
             if len(message.embeds) > 0:
                 embed = message.embeds[0]
-                if embed.author.name == track.author and embed.title == track.title and isinstance(embed.description, str):
+                if (
+                    embed.author.name == track.author
+                    and embed.title == track.title
+                    and isinstance(embed.description, str)
+                ):
                     for search_plat in SearchPlatform:
                         if re.search(search_plat.value, embed.description):
                             match = re.search(r"\d+", message.clean_content)
