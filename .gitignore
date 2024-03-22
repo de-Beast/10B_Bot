@@ -43,6 +43,8 @@ bld/
 .idea/
 .pytest_cache/
 .env
+.venv
+.mypy_cache
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
