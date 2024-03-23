@@ -8,6 +8,9 @@ from .VKAPI import VKAPI
 class VKAudioClient:
     __api: VKAPI | None = None
 
+    def __init__(self, request_data: MetaData):
+        self.request_data = request_data
+    
     @property
     def api(self) -> VKAPI:
         if self.__api is None:
@@ -24,44 +27,44 @@ class VKAudioClient:
 
     def _search_raw(self, query: str) -> dict:
         return self.api.method("audio.search", q=query, auto_complete=1)
-
-    def get_single(self, id: str | None, request_data: MetaData) -> TrackInfo | None:
-        audio = self._get_single_raw(id)
-        if len(audio) == 0:
-            return None
+    
+    def _create_track_info(self, audio_info: dict) -> TrackInfo:
         return TrackInfo(
             {
-                "source": audio["url"],
+                "source": audio_info["url"],
                 "meta": {
-                    "title": audio["title"],
-                    "author": audio["artist"],
-                    "thumbnail": audio["album"]["thumb"]["photo_1200"]
-                    if "album" in audio
+                    "title": audio_info["title"],
+                    "author": audio_info["artist"],
+                    "thumbnail": audio_info["album"]["thumb"]["photo_1200"]
+                    if "album" in audio_info
                     else "",
-                    "platform": request_data["platform"],
-                    "requested_by": request_data["requested_by"],
-                    "requested_at": request_data["requested_at"],
+                    "platform": self.request_data["platform"],
+                    "requested_by": self.request_data["requested_by"],
+                    "requested_at": self.request_data["requested_at"],
                 },
-                "track_url": audio["url"],
-                "author_url": audio["url"],
+                "track_url": audio_info["url"],
+                "author_url": audio_info["url"],
             }
         )
 
+    def get_single(self, id: str | None) -> TrackInfo | None:
+        audio = self._get_single_raw(id)
+        if len(audio) == 0:
+            return None
+        return self._create_track_info(audio)
+
     def get_album(
-        self, owner_id: int, id: int, key: str | None, request_data: MetaData
+        self, owner_id: int, id: int, key: str | None
     ) -> Generator[TrackInfo, None, None] | None:
         audios = self._get_album_raw(owner_id, id, key)
         if audios["count"] == 0:
             return None
         for audio in audios["items"]:
-            result = self.get_single(f"{audio['owner_id']}_{audio['id']}", request_data)
-            if not result:
-                continue
-            yield result
+            yield self._create_track_info(audio)
         return None
 
     def search(
-        self, query: str, request_data: MetaData, amount: int = 1
+        self, query: str, amount: int = 1
     ) -> Generator[TrackInfo, None, None] | None:
         audios = self._search_raw(query)
         if audios["count"] == 0:
@@ -69,10 +72,5 @@ class VKAudioClient:
         for num, audio in enumerate(audios["items"]):
             if num == amount:
                 break
-            result = self.get_single(
-                f"{audio[num]['owner_id']}_{audio[num]['id']}", request_data
-            )
-            if not result:
-                continue
-            yield result
+            yield self._create_track_info(audio)
         return None

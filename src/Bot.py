@@ -1,26 +1,30 @@
 import discord
-from config import get_config
 from discord.ext import bridge, commands
 from discord.ext.pages import Page, Paginator
-from Exceptions import NotInVoiceError, WrongVoiceError
 from loguru import logger
+
+from config import get_config
+from Exceptions import NotInVoiceError, WrongVoiceError
 
 
 class TenB_Bot(bridge.Bot):
     def __init__(self):
-        super().__init__(command_prefix=get_config().get("PREFIX"), intents=discord.Intents.all())
+        super().__init__(
+            command_prefix=get_config().get("PREFIX"), intents=discord.Intents.all()
+        )
         # Init Music modules
         from ABC import CogABC
+
         CogABC._client = self
 
         from Music_cog import setup_audio_cogs
-        setup_audio_cogs(self)
 
-        from Audio_cog import setup_audio_cogs
         setup_audio_cogs(self)
 
     async def when_ready(self):
-        logger.info("Guild list::{guilds}", guilds=[str(guild) for guild in self.guilds])
+        logger.info(
+            "Guild list::{guilds}", guilds=[str(guild) for guild in self.guilds]
+        )
         logger.success("Bot is ready")
 
     async def on_command_error(
