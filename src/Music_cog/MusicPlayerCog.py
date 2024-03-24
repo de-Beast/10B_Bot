@@ -6,7 +6,7 @@ from discord.ext import bridge, commands
 from loguru import logger
 
 import Checks
-from ABC import MusicCogABC
+from ABC import CogABC
 from enums import SearchPlatform, ThreadType
 from Exceptions import NotInVoiceError, WrongVoiceError
 from Music_cog.player.Track import MetaData
@@ -16,7 +16,7 @@ from .player import MusicPlayer
 from .room.Handlers import SettingsThreadHandler
 
 
-class MusicPlayerCog(MusicCogABC):
+class MusicPlayerCog(CogABC):
     ############################## Commands #################################
 
     # GROUP - PLAY
@@ -76,8 +76,7 @@ class MusicPlayerCog(MusicCogABC):
             return
 
         if ctx.voice_client is None:
-            player: MusicPlayer = await ctx.author.voice.channel.connect(cls=lambda client, connectable: MusicPlayer(client, connectable), reconnect=True)  # type: ignore
-            await player.init()
+            await ctx.author.voice.channel.connect(cls=lambda client, connectable: MusicPlayer(client, connectable), reconnect=True)  # type: ignore
         elif ctx.author.voice.channel != ctx.voice_client.channel:
             most_authoritative_role: discord.Role | None = None
             if isinstance(ctx.voice_client, MusicPlayer) and isinstance(
@@ -159,4 +158,4 @@ class MusicPlayerCog(MusicCogABC):
 
 
 def setup(client: bridge.Bot):
-    client.add_cog(MusicPlayerCog(client))
+    client.add_cog(MusicPlayerCog())

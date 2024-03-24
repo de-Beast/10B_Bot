@@ -4,7 +4,7 @@ from loguru import logger
 from pymongo.collection import Collection
 
 import MongoDB as mdb
-from ABC import MusicCogABC
+from ABC import CogABC
 from Bot import TenB_Bot
 from config import get_config
 from enums import ThreadType
@@ -18,7 +18,7 @@ from .room import Handlers
 from .room.Handlers import PlayerMessageHandler
 
 
-class MusicRoomCog(MusicCogABC):
+class MusicRoomCog(CogABC):
     @staticmethod
     def check_room_correctness(guild: discord.Guild, coll: Collection[MusicRoomInfo]) -> MusicRoomInfo | None:
         info: MusicRoomInfo | None = coll.find_one(
@@ -190,4 +190,4 @@ class MusicRoomCog(MusicCogABC):
 
 def setup(client: TenB_Bot):
     Handlers.setup(client)
-    client.add_cog(MusicRoomCog(client))
+    client.add_cog(MusicRoomCog())
