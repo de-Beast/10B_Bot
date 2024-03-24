@@ -1,4 +1,5 @@
 import asyncio
+from typing import Generator
 
 import discord
 from discord.ext import bridge, tasks
@@ -12,18 +13,28 @@ from . import DownloadMethodResolver as plUtils
 from .Queue import Queue
 from .Track import MetaData, Track, TrackInfo
 
-TIMEOUT = 20
+TIMEOUT = 60
 
-# TODO: Исправить зависимости от многих состояний (self.track, self.has_track, self._playing_track и т.д.) 
+# TODO: Исправить зависимости от многих состояний (self.track, self.has_track, self._playing_track и т.д.)
+
 
 class MusicPlayer(discord.VoiceClient):
     def __init__(self, client: bridge.Bot, channel: discord.VoiceChannel):
         super().__init__(client, channel)
+        self._guild = channel.guild
+
         self.disconnect_timeout.start()
+
         self._queue: Queue = Queue(channel.guild)
         self._playing_track = None
 
         self._is_queue_inited = False
+
+        self._query_tasks: list[asyncio.Task] = []
+
+    @property
+    def guild(self) -> discord.Guild:
+        return self._guild
 
     @property
     async def _player_message_handler(self) -> PlayerMessageHandler | None:
@@ -86,39 +97,56 @@ class MusicPlayer(discord.VoiceClient):
 
     async def add_query(self, query: str, request_data: MetaData) -> None:
         resolver = plUtils.DownloadMethodResolver(query, request_data)
-        coro = asyncio.create_task(resolver.proccess_query())
-        await asyncio.wait_for(coro, timeout=20)
-        tracks_all_meta = coro.result()
-        await self._add_tracks_to_queue(tracks_all_meta)
+        task = asyncio.create_task(resolver.proccess_query())
+        task.add_done_callback(self._proccess_query_callback)
 
-    async def _add_tracks_to_queue(
-        self, tracks_all_meta: list[TrackInfo] | None
+    def _proccess_query_callback(
+        self,
+        future: asyncio.Task[Generator[TrackInfo, None, None] | TrackInfo | None],
     ) -> None:
-        if tracks_all_meta is None:
-            logger.error("No tracks to add to queue")
-            if handler := await self._player_message_handler:
-                await handler.channel.send("No tracks were found", delete_after=5)
-            return
+        tracks_all_meta = future.result()
+        task = asyncio.create_task(self._add_tracks_to_queue(tracks_all_meta))
+        task.add_done_callback(self._remove_task_from_list)
+        self._query_tasks.append(task)
 
-        for track_all_meta in tracks_all_meta:
-            if not track_all_meta:
-                continue
+    def _remove_task_from_list(self, task: asyncio.Task) -> None:
+        self._query_tasks.remove(task)
 
-            track = await Track.from_dict(track_all_meta)
-            await self._queue.add_track(track)
-
-        logmessage = "TRACKS QUEUE:"
-        for track in self._queue:
-            logmessage += "\n" + str(track)
-        logger.opt(colors=True).info(logmessage)
+    async def _try_start_audio_cycle(self):
         if not self.has_track and not self.play_music.is_running():
             self.play_music.start()
             if not self._is_queue_inited:
                 self._is_queue_inited = True
                 await self._queue.init(self.play_music.loop)
 
+    async def _add_tracks_to_queue(
+        self, tracks_info: Generator[TrackInfo, None, None] | TrackInfo | None
+    ) -> None:
+        if tracks_info is None:
+            logger.error("No tracks to add to queue")
+            if handler := await self._player_message_handler:
+                await handler.channel.send("No tracks were found", delete_after=5)
+            return
+
+        if isinstance(tracks_info, dict):
+            track = await Track.from_dict(tracks_info)
+            await self._queue.add_track(track)
+            await self._try_start_audio_cycle()
+        else:
+            for track_info in tracks_info:
+                track = await Track.from_dict(track_info)
+                await self._queue.add_track(track)
+                await self._try_start_audio_cycle()
+
+        logmessage = f"TRACKS QUEUE:\n{self.track}"
+        for track in self._queue:
+            logmessage += "\n" + str(track)
+        logger.opt(colors=True).info(logmessage)
+
     async def disconnect(self, *, force: bool = False):
         await self.stop_player()
+        for task in self._query_tasks.copy():
+            task.cancel()
         self.disconnect_timeout.cancel()
         await super().disconnect(force=force)
         await self.voice_disconnect()
@@ -133,7 +161,7 @@ class MusicPlayer(discord.VoiceClient):
                 )
             self.play_music.cancel()
         elif self._queue.new_track:
-            self._playing_track = await self.track.copy()
+            self._playing_track = await self.track.copy() if self.track else None
             if handler := await self._player_message_handler:
                 await handler.update_playing_track_embed(
                     self.guild, self.track, self.shuffle

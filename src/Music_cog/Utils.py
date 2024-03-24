@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import discord
 from loguru import logger
+
 from MongoDB import DataBase
 
 if TYPE_CHECKING:

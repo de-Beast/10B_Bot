@@ -47,30 +47,26 @@ class VKAudioClient:
             }
         )
 
+    def _get_generator(self, audios: dict, amount: int) -> Generator[TrackInfo, None, None]:
+        for num, audio in enumerate(audios["items"]):
+            if num == amount:
+                break
+            if audio['is_licensed'] is False or audio['url'] == '':
+                continue
+            yield self._create_track_info(audio)
+    
     def get_single(self, id: str | None) -> TrackInfo | None:
         audio = self._get_single_raw(id)
-        if len(audio) == 0:
-            return None
-        return self._create_track_info(audio)
+        return self._create_track_info(audio) if audio else None
 
     def get_album(
         self, owner_id: int, id: int, key: str | None
     ) -> Generator[TrackInfo, None, None] | None:
         audios = self._get_album_raw(owner_id, id, key)
-        if audios["count"] == 0:
-            return None
-        for audio in audios["items"]:
-            yield self._create_track_info(audio)
-        return None
+        return self._get_generator(audios, -1) if audios["count"] > 0 else None
 
     def search(
         self, query: str, amount: int = 1
     ) -> Generator[TrackInfo, None, None] | None:
         audios = self._search_raw(query)
-        if audios["count"] == 0:
-            return None
-        for num, audio in enumerate(audios["items"]):
-            if num == amount:
-                break
-            yield self._create_track_info(audio)
-        return None
+        return self._get_generator(audios, amount) if audios["count"] > 0 else None

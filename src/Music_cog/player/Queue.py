@@ -3,8 +3,8 @@ import random
 from collections import deque
 
 import discord
-from enums import Loop, Shuffle, ThreadType
 
+from enums import Loop, Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.room.Handlers import (
     HistoryThreadHandler,
@@ -112,10 +112,14 @@ class Queue(SimpleQueue):
         self.__shuffled_queue: SimpleQueue = SimpleQueue(guild)
         self.__shuffle: Shuffle = Shuffle.NOSHUFFLE
 
+    async def init(self, event_loop: asyncio.AbstractEventLoop) -> None:
+        await super().init(event_loop)
+        await self.__shuffled_queue.init(event_loop)
+
     @property
     def loop(self) -> Loop:
         return self._loop
-
+    
     @loop.setter
     def loop(self, loop_type: Loop):
         if isinstance(loop_type, Loop):
