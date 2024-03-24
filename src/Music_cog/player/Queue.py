@@ -15,24 +15,29 @@ from Music_cog.room.Handlers import (
 from .Track import Track
 
 # TODO: Отображение очереди должно быть вместе с играющим треком. Играющий трек должен быть просто явно отмечен.
-# Так не придется постоянно удалять треки из отображаемой очереди 
-# Можно будет сделать более менее оптимизированную перемотку назад, 
+# Так не придется постоянно удалять треки из отображаемой очереди
+# Можно будет сделать более менее оптимизированную перемотку назад,
 # которая будет включать предыдущий трек, если очередь зациклена
+
 
 class SimpleQueue(deque):
     def __init__(self, guild: discord.Guild) -> None:
         super().__init__()
         self.guild = guild
+        self.event_loop: asyncio.AbstractEventLoop
         self._current_track: Track | None = None
         self.new_track = False
         self._is_prev_track_prepared = False
 
         self._loop: Loop = Loop.NOLOOP
 
-    async def init(self) -> None:
+    async def init(self, event_loop: asyncio.AbstractEventLoop) -> None:
+        self.event_loop = event_loop
         if queue_handler := self._queue_handler:
             await queue_handler.remove_track_message(all=True)
-        if player_handler := await PlayerMessageHandler.from_room(Utils.get_music_room(self.guild)):
+        if player_handler := await PlayerMessageHandler.from_room(
+            Utils.get_music_room(self.guild)
+        ):
             self._loop = player_handler.loop
 
     @property
@@ -67,7 +72,7 @@ class SimpleQueue(deque):
     def prepare_prev_track(self):
         self._is_prev_track_prepared = True
 
-    async def update_queue(self, loop: asyncio.AbstractEventLoop | None = None):
+    def update_queue(self):
         if self._is_prev_track_prepared:
             self._is_prev_track_prepared = False
             self.new_track = True
@@ -77,14 +82,22 @@ class SimpleQueue(deque):
             match self._loop:
                 case Loop.NOLOOP:
                     self._current_track = self.popleft()
-                    if loop and (queue_handler := self._queue_handler):
-                        loop.create_task(queue_handler.remove_track_message())
+                    if queue_handler := self._queue_handler:
+                        self.event_loop.create_task(
+                            queue_handler.remove_track_message()
+                        )
                 case Loop.LOOP:
                     if self._current_track is not None:
                         self.append(self._current_track)
-                        if loop and self.__len__() > 1 and (queue_handler := self._queue_handler):
-                            loop.create_task(
-                                queue_handler.send_track_message(self._current_track, self.__len__() - 1, is_loop=True)
+                        if self.__len__() > 1 and (
+                            queue_handler := self._queue_handler
+                        ):
+                            self.event_loop.create_task(
+                                queue_handler.send_track_message(
+                                    self._current_track,
+                                    self.__len__() - 1,
+                                    is_loop=True,
+                                )
                             )
                     self._current_track = self.popleft()
             self.new_track = True
@@ -94,15 +107,19 @@ class SimpleQueue(deque):
 
 
 class Queue(SimpleQueue):
-    def __init__(self, guild: discord.Guild):
+    def __init__(self, guild: discord.Guild) -> None:
         super().__init__(guild)
         self.__shuffled_queue: SimpleQueue = SimpleQueue(guild)
         self.__shuffle: Shuffle = Shuffle.NOSHUFFLE
 
+    async def init(self, event_loop: asyncio.AbstractEventLoop) -> None:
+        await super().init(event_loop)
+        await self.__shuffled_queue.init(event_loop)
+
     @property
     def loop(self) -> Loop:
         return self._loop
-
+    
     @loop.setter
     def loop(self, loop_type: Loop):
         if isinstance(loop_type, Loop):
@@ -164,7 +181,7 @@ class Queue(SimpleQueue):
 
         super().prepare_prev_track()
 
-    async def update_queue(self, loop: asyncio.AbstractEventLoop | None = None, *args):
+    def update_queue(self):
         if self._is_prev_track_prepared:
             self._is_prev_track_prepared = False
             self.new_track = True
@@ -174,14 +191,14 @@ class Queue(SimpleQueue):
             case Shuffle.NOSHUFFLE:
                 if len(self.__shuffled_queue) > 0:
                     self.__shuffled_queue.clear()
-                await super().update_queue(loop)
+                super().update_queue()
             case Shuffle.SHUFFLE:
-                await self.__shuffled_queue.update_queue()
-                await super().update_queue(loop)
+                self.__shuffled_queue.update_queue()
+                super().update_queue()
                 self.append(self._current_track)
                 self._current_track = None
                 try:
                     self.rotate(-1 * self.index(self.__shuffled_queue._current_track))
                 except ValueError:
                     self.__shuffle = Shuffle.NOSHUFFLE
-                await super().update_queue(loop)
+                super().update_queue()

@@ -13,8 +13,6 @@ def main(discord_token: str | None):
 
 if __name__ == "__main__":
     from config import get_config
-    from vk_api import get_api
 
     config = get_config(sys.argv[1] if len(sys.argv) > 1 else None)
-    get_api(config.get("VKADMIN_TOKEN"))
     main(config.get("DISCORD_TOKEN"))
