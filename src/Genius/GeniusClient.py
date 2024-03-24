@@ -16,12 +16,12 @@ class GeniusClient:
     def get_song(self, title: str, author: str) -> None:
         self.song = self.api.search_song(title=title, artist=author)
 
-    def get_thumbnail(self, title: str | None = None, author: str | None = None) -> str:
+    def get_thumbnail(self, title: str | None = None, author: str | None = None) -> str | None:
         if title is not None and author is not None:
             self.get_song(title, author)
         return self.song.song_art_image_thumbnail_url if self.song else None
 
-    def get_lyrics(self, title: str | None = None, author: str | None = None) -> str:
+    def get_lyrics(self, title: str | None = None, author: str | None = None) -> str | None:
         if title is not None and author is not None:
             self.get_song(title, author)
         return self.song.lyrics if self.song else None
