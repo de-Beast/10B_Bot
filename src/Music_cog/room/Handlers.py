@@ -10,8 +10,12 @@ from enums import SearchPlatform, Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
-from .Embeds import (EmbedDefault, EmbedPlayingTrack, EmbedTrack,
-                     set_discription_from_track)
+from .Embeds import (
+    EmbedDefault,
+    EmbedPlayingTrack,
+    EmbedTrack,
+    set_discription_from_track,
+)
 from .Views import PlayerView, SettingsView, setup_view_client
 
 

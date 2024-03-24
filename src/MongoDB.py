@@ -1,15 +1,13 @@
-from typing import Self, TypedDict, TYPE_CHECKING
+from typing import Self, TypedDict
 
 import discord
 import pymongo
 from loguru import logger
+from pymongo.collection import Collection
+from pymongo.database import Database
 
 from config import Configuration, get_config
 from enums import ThreadType
-
-if TYPE_CHECKING:
-    from pymongo.database import Database
-    from pymongo.collection import Collection
 
 
 class MusicRoomInfo(TypedDict):
@@ -25,7 +23,9 @@ class DataBase:
     def __new__(cls):
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.__database = pymongo.MongoClient(get_config().get("MONGODB_URL")).TenB_Bot
+            cls.__database = pymongo.MongoClient(
+                get_config().get("MONGODB_URL")
+            ).TenB_Bot
         return cls.__instance
 
     @property
@@ -47,17 +47,23 @@ class DataBase:
         info = MusicRoomInfo(guild_id=guild.id, room_id=music_room.id, threads={})
         for thread_type, id in threads:
             info["threads"][thread_type] = id
-        logger.info(f"{guild} (id: {guild.id}) Updated Music Room!!! - new id: {music_room.id}")
+        logger.info(
+            f"{guild} (id: {guild.id}) Updated Music Room!!! - new id: {music_room.id}"
+        )
         return info
 
     def update_room_info(self, room_info: MusicRoomInfo):
         if edited_info := convert_music_room_info(room_info):
             self.music_rooms_collection.update_one(
-                {"guild_id": edited_info["guild_id"]}, {"$set": edited_info}, upsert=True
+                {"guild_id": edited_info["guild_id"]},
+                {"$set": edited_info},
+                upsert=True,
             )
 
     def get_music_room_id(self, guild: discord.Guild) -> int | None:
-        info = self.music_rooms_collection.find_one({"guild_id": guild.id}, {"_id": 0, "room_id": 1})
+        info = self.music_rooms_collection.find_one(
+            {"guild_id": guild.id}, {"_id": 0, "room_id": 1}
+        )
         return info["room_id"] if info else None
 
     def get_threads_ids(self, guild: discord.Guild) -> dict[ThreadType, int] | None:
@@ -76,7 +82,9 @@ class DataBase:
         return None
 
 
-def convert_music_room_info(info: MusicRoomInfo, *, for_storage: bool = True) -> MusicRoomInfo | None:
+def convert_music_room_info(
+    info: MusicRoomInfo, *, for_storage: bool = True
+) -> MusicRoomInfo | None:
     try:
         converted_info: MusicRoomInfo = {
             "guild_id": info["guild_id"],
