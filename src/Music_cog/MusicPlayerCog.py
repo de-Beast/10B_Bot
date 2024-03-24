@@ -76,8 +76,7 @@ class MusicPlayerCog(CogABC):
             return
 
         if ctx.voice_client is None:
-            player: MusicPlayer = await ctx.author.voice.channel.connect(cls=lambda client, connectable: MusicPlayer(client, connectable), reconnect=True)  # type: ignore
-            await player.init()
+            await ctx.author.voice.channel.connect(cls=lambda client, connectable: MusicPlayer(client, connectable), reconnect=True)  # type: ignore
         elif ctx.author.voice.channel != ctx.voice_client.channel:
             most_authoritative_role: discord.Role | None = None
             if isinstance(ctx.voice_client, MusicPlayer) and isinstance(
