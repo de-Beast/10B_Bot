@@ -11,7 +11,7 @@ def is_connected(user_bot_same_voice: bool = True):
     async def predicate(ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
         if isinstance(ctx.author, User):
             return False
-
+        
         if not (condition := isinstance(ctx.author.voice, VoiceState)):
             raise NotInVoiceError("You are not in voice channel")
 
@@ -33,7 +33,7 @@ def is_connected(user_bot_same_voice: bool = True):
 
 
 def permissions_for_play():
-    async def predicate(ctx: commands.Context) -> bool:
+    async def predicate(ctx: bridge.BridgeExtContext) -> bool:
         """Check if bot has permissions to play in user's voice channel."""
         perms: Permissions = ctx.author.voice.channel.permissions_for(ctx.me)
         condition: bool = perms.connect and perms.speak
@@ -42,7 +42,7 @@ def permissions_for_play():
 
         return condition
 
-    return commands.check(predicate)
+    return commands.check(predicate)  # type: ignore
 
 
 def is_history_thread():
@@ -52,4 +52,4 @@ def is_history_thread():
             raise WrongTextChannelError("Called not from History thread")
         return condition
 
-    return commands.check(predicate)
+    return commands.check(predicate)  # type: ignore

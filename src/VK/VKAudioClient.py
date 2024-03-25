@@ -1,5 +1,6 @@
 from typing import Generator
 
+from Genius import GeniusClient
 from Music_cog.player.Track import MetaData, TrackInfo
 
 from .VKAPI import VKAPI
@@ -37,7 +38,7 @@ class VKAudioClient:
                     "author": audio_info["artist"],
                     "thumbnail": audio_info["album"]["thumb"]["photo_1200"]
                     if "album" in audio_info
-                    else "",
+                    else GeniusClient().get_thumbnail(title=audio_info["title"], author=audio_info["artist"]),
                     "platform": self.request_data["platform"],
                     "requested_by": self.request_data["requested_by"],
                     "requested_at": self.request_data["requested_at"],

@@ -70,7 +70,7 @@ class EmbedPlayingTrack(EmbedTrack):
             thread = Utils.get_thread(guild, thread_type)
             self.description += f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
 
-        self.set_image(url=track.thumbnail if track.thumbnail != "" else message_config["back_image"])
+        self.set_image(url=track.thumbnail if track.thumbnail else message_config["back_image"])
         self.add_field(
             name="Request Info",
             inline=True,

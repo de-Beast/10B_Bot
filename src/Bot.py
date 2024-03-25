@@ -10,7 +10,7 @@ from Exceptions import NotInVoiceError, WrongVoiceError
 class TenB_Bot(bridge.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix=get_config().get("PREFIX"), intents=discord.Intents.all()
+            command_prefix=get_config().get("PREFIX"), intents=discord.Intents.all() # type: ignore
         )
         # Init Music modules
         from ABC import CogABC

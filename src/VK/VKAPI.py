@@ -1,10 +1,11 @@
 from json import dumps, loads
+from typing import Any
 
 from requests import Session, session
 
 
 class VKAPI:
-    token = None
+    token: Any = None
     v = 5.131
     user_agent = "KateMobileAndroid/56 lite-460 (Android 4.4.2; SDK 19; x86; unknown Android SDK built for x86; en)"
 
