@@ -30,8 +30,6 @@ class VKAudioClient:
         return self.api.method("audio.search", q=query, auto_complete=1)
     
     def _create_track_info(self, audio_info: dict) -> TrackInfo:
-        genius_client = GeniusClient()
-        thumbnail = genius_client.get_thumbnail(title=audio_info["title"], author=audio_info["artist"])
         return TrackInfo(
             {
                 "source": audio_info["url"],
@@ -40,7 +38,7 @@ class VKAudioClient:
                     "author": audio_info["artist"],
                     "thumbnail": audio_info["album"]["thumb"]["photo_1200"]
                     if "album" in audio_info
-                    else thumbnail,
+                    else GeniusClient().get_thumbnail(title=audio_info["title"], author=audio_info["artist"]),
                     "platform": self.request_data["platform"],
                     "requested_by": self.request_data["requested_by"],
                     "requested_at": self.request_data["requested_at"],
