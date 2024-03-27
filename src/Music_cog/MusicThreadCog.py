@@ -1,12 +1,13 @@
 import re
 
-import Checks
 import discord
-from ABC import MusicCogABC
 from discord.ext import bridge, commands
+from loguru import logger
+
+import Checks
+from ABC import CogABC
 from enums import SearchPlatform, ThreadType
 from Exceptions import NotInVoiceError, WrongTextChannelError
-from loguru import logger
 
 from . import Utils
 from .room.Handlers import (
@@ -16,7 +17,7 @@ from .room.Handlers import (
 )
 
 
-class MusicThreadCog(MusicCogABC):
+class MusicThreadCog(CogABC):
     async def clear_thread_from_reactions(self, guild: discord.Guild) -> None:
         threads = [Utils.get_thread(guild, thread_type) for thread_type in ThreadType]
         for thread in threads:
@@ -50,7 +51,7 @@ class MusicThreadCog(MusicCogABC):
                     search_platform = SearchPlatform.get_key(match.group(0))
                     break
         setattr(new_ctx, "search_platform", search_platform)
-        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name}")
+        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name if embed.author else ''}")
         await ctx.respond(content="Track is added from history", ephemeral=True, delete_after=5)
 
     @add_track_from_history.error
@@ -80,13 +81,13 @@ class MusicThreadCog(MusicCogABC):
     async def clear_threads_on_ready(self):
         for guild in self.client.guilds:
             try:
-                handler = QueueThreadHandler(Utils.get_thread(guild, ThreadType.QUEUE))
+                handler = QueueThreadHandler(Utils.get_thread(guild, ThreadType.QUEUE)) # type: ignore
                 await handler.thread.purge(limit=None)
 
-                handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
+                handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS)) # type: ignore
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
 
-                handler = HistoryThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS))
+                handler = HistoryThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS)) # type: ignore
                 await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
             except Exception as e:
                 logger.error(f"{e}")
@@ -108,4 +109,4 @@ class MusicThreadCog(MusicCogABC):
 
 
 def setup(client: bridge.Bot):
-    client.add_cog(MusicThreadCog(client))
+    client.add_cog(MusicThreadCog())

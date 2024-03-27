@@ -1,4 +1,5 @@
 import discord
+
 from enums import Shuffle, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
@@ -16,7 +17,9 @@ def set_discription_from_track(embed: discord.Embed, track: Track) -> discord.Em
 
 
 class EmbedDefault(discord.Embed):
-    def __init__(self, guild: discord.Guild | None = None, shuffle: Shuffle | None = Shuffle.NOSHUFFLE, **kwargs) -> None:
+    def __init__(
+        self, guild: discord.Guild | None = None, shuffle: Shuffle | None = Shuffle.NOSHUFFLE, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self.title = "Queue is clear"
         self.set_image(url=message_config["back_image"])
@@ -27,8 +30,6 @@ class EmbedDefault(discord.Embed):
                 self.set_footer(text="Using default queue")
             case Shuffle.SHUFFLE:
                 self.set_footer(text="Using shuffled queue")
-            case Shuffle.SECRET:
-                self.set_footer(text="Using secretly shuffled queue")
         if guild:
             self.description = "|"
             for thread_type in ThreadType:
@@ -60,14 +61,16 @@ class EmbedTrack(EmbedDefault):
 
 
 class EmbedPlayingTrack(EmbedTrack):
-    def __init__(self, guild: discord.Guild, track: Track, shuffle: Shuffle = Shuffle.NOSHUFFLE, *args, **kwargs) -> None:
+    def __init__(
+        self, guild: discord.Guild, track: Track, shuffle: Shuffle = Shuffle.NOSHUFFLE, *args, **kwargs
+    ) -> None:
         super().__init__(track, None, guild, shuffle, **kwargs)
         self.description = "|"
         for thread_type in ThreadType:
             thread = Utils.get_thread(guild, thread_type)
             self.description += f" [{thread_type.name.lower()}]({thread.jump_url}) |" if thread else ""
 
-        self.set_image(url=track.thumbnail)
+        self.set_image(url=track.thumbnail if track.thumbnail else message_config["back_image"])
         self.add_field(
             name="Request Info",
             inline=True,

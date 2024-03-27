@@ -2,11 +2,10 @@ import re
 from typing import Self
 
 import discord
-from loguru import logger
-
 from ABC import HandlerABC, ThreadHandlerABC
 from Bot import TenB_Bot
 from enums import SearchPlatform, Shuffle, ThreadType
+from loguru import logger
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
@@ -56,30 +55,44 @@ class PlayerMessageHandler(MessageHandler):
     async def get_main_message(room: discord.TextChannel) -> discord.Message | None:
         try:
             async for message in room.history():
-                if len(message.embeds) > 0 and message.author == PlayerMessageHandler._client.user:
+                if (
+                    len(message.embeds) > 0
+                    and message.author == PlayerMessageHandler._client.user
+                ):
                     return message
         except Exception as e:
             logger.error(f"NO MAIN MESSAGE - {e}")
         return None
 
-    async def update_main_view(self):
+    async def reset_main_view(self):
         view = PlayerView.from_message(self.message)
         view.set_to_default_view()
         await self.message.edit(view=view)
         self.client.add_view(PlayerView(), message_id=self.message.id)
 
     async def update_playing_track_embed(
-        self, guild: discord.Guild, track: Track | None = None, shuffle: Shuffle = Shuffle.NOSHUFFLE
+        self,
+        guild: discord.Guild,
+        track: Track | None = None,
+        shuffle: Shuffle = Shuffle.NOSHUFFLE,
     ):
-        await self.message.edit(embed=EmbedPlayingTrack(guild, track, shuffle) if track else EmbedDefault(guild, shuffle))
+        await self.message.edit(
+            embed=EmbedPlayingTrack(guild, track, shuffle)
+            if track
+            else EmbedDefault(guild, shuffle)
+        )
 
 
 class SettingsThreadHandler(ThreadHandlerABC):
     @property
     async def search_platform(self) -> SearchPlatform:
-        thread_message: discord.Message | None = await self.get_thread_message(self.thread)
+        thread_message: discord.Message | None = await self.get_thread_message(
+            self.thread
+        )
         return (
-            SettingsView.from_message(thread_message).search_platform if thread_message is not None else SearchPlatform.YOUTUBE
+            SettingsView.from_message(thread_message).search_platform
+            if thread_message is not None
+            else SearchPlatform.YOUTUBE
         )
 
     @staticmethod
@@ -92,17 +105,21 @@ class SettingsThreadHandler(ThreadHandlerABC):
         return None
 
     async def update_thread_views(self):
-        thread_message = await self.get_thread_message(self.thread)
-        self.client.add_view(
-            SettingsView(),
-            message_id=thread_message.id,
-        )
+        if thread_message := await self.get_thread_message(self.thread):
+            self.client.add_view(
+                SettingsView(),
+                message_id=thread_message.id,
+            )
 
 
 class QueueThreadHandler(ThreadHandlerABC):
-    async def send_track_message(self, track: Track, track_number: int, /, *, is_loop: bool = False) -> None:
+    async def send_track_message(
+        self, track: Track, track_number: int, /, *, is_loop: bool = False
+    ) -> None:
         if is_loop:
-            await self.thread.purge(limit=1, check=lambda m: m.author == self.client.user, oldest_first=True)
+            await self.thread.purge(
+                limit=1, check=lambda m: m.author == self.client.user, oldest_first=True
+            )
             await self.update_track_numbers()
 
         await self.thread.send(embed=EmbedTrack(track, track_number))
@@ -135,12 +152,23 @@ class HistoryThreadHandler(ThreadHandlerABC):
         async for message in self.thread.history():
             if len(message.embeds) > 0:
                 embed = message.embeds[0]
-                if embed.author.name == track.author and embed.title == track.title and isinstance(embed.description, str):
+                if (
+                    embed.author.name == track.author
+                    and embed.title == track.title
+                    and isinstance(embed.description, str)
+                ):
                     for search_plat in SearchPlatform:
                         if re.search(search_plat.value, embed.description):
                             match = re.search(r"\d+", message.clean_content)
-                            content = f"{int(match.group()) + 1} times" if match else "2 times"
-                            await message.edit(content=content, embed=set_discription_from_track(embed, track))
+                            content = (
+                                f"{int(match.group()) + 1} times"
+                                if match
+                                else "2 times"
+                            )
+                            await message.edit(
+                                content=content,
+                                embed=set_discription_from_track(embed, track),
+                            )
                             return
                 break
         await self.thread.send(embed=EmbedTrack(track))

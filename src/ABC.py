@@ -1,22 +1,23 @@
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Self
 
-import Bot
 import discord
 from discord import ui
 from discord.ext import bridge, commands
+
+import Bot
 
 
 class CogABCMeta(discord.cog.CogMeta, ABCMeta):
     pass
 
 
-class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
+class CogABC(ABC, commands.Cog, metaclass=CogABCMeta):
     _client: Bot.TenB_Bot
 
     @property
     def client(self) -> Bot.TenB_Bot:
-        return MusicCogABC._client
+        return CogABC._client
 
     async def invoke_command(
         self,
@@ -43,7 +44,7 @@ class MusicCogABC(ABC, commands.Cog, metaclass=CogABCMeta):
             if command._after_invoke:
                 await command._after_invoke(self, ctx)  # type: ignore
         except commands.CommandError as error:
-            await command.on_error(self, ctx, error) # type: ignore
+            await command.on_error(self, ctx, error)  # type: ignore
         finally:
             command.enabled = False
 
@@ -65,12 +66,6 @@ class ViewABC(ABC, ui.View):
             view.add_item(ui.view._component_to_item(component))
         view.message = message
         return view
-        # base_view = super().from_message(message, timeout=timeout)
-        # view = cls(timeout=timeout)
-        # view.clear_items()
-        # for item in base_view.children:
-        #     view.add_item(item)
-        # return view
 
 
 class HandlerABC(ABC):

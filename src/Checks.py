@@ -1,3 +1,4 @@
+from discord import Permissions, User, VoiceState
 from discord.ext import bridge, commands
 
 import Music_cog.player.Player as plr
@@ -8,8 +9,10 @@ from Music_cog import Utils
 
 def is_connected(user_bot_same_voice: bool = True):
     async def predicate(ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
-        condition = ctx.author.voice is not None
-        if not condition:
+        if isinstance(ctx.author, User):
+            return False
+        
+        if not (condition := isinstance(ctx.author.voice, VoiceState)):
             raise NotInVoiceError("You are not in voice channel")
 
         condition = (
@@ -30,15 +33,16 @@ def is_connected(user_bot_same_voice: bool = True):
 
 
 def permissions_for_play():
-    async def predicate(ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
-        perms = ctx.author.voice.channel.permissions_for(ctx.me)
-        condition = perms.connect and perms.speak
+    async def predicate(ctx: bridge.BridgeExtContext) -> bool:
+        """Check if bot has permissions to play in user's voice channel."""
+        perms: Permissions = ctx.author.voice.channel.permissions_for(ctx.me)
+        condition: bool = perms.connect and perms.speak
         if not condition:
-            raise commands.BotMissingPermissions(["Connect", "Speak"])
+            raise commands.BotMissingPermissions(["connect", "speak"])
 
         return condition
 
-    return commands.check(predicate)
+    return commands.check(predicate)  # type: ignore
 
 
 def is_history_thread():
@@ -48,4 +52,4 @@ def is_history_thread():
             raise WrongTextChannelError("Called not from History thread")
         return condition
 
-    return commands.check(predicate)
+    return commands.check(predicate)  # type: ignore

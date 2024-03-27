@@ -1,10 +1,7 @@
-from ABC import MusicCogABC
-
 from . import MusicPlayerCog, MusicRoomCog, MusicThreadCog
 
 
-def setup_music_cogs(client):
-    MusicCogABC._client = client
+def setup_audio_cogs(client):
     MusicPlayerCog.setup(client)
     MusicRoomCog.setup(client)
     MusicThreadCog.setup(client)
