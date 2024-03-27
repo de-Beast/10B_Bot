@@ -2,6 +2,7 @@ from typing import Generator
 
 import yt_dlp as ytdl  # type: ignore
 
+from enums import SearchPlatform
 from Music_cog.player.Track import MetaData, TrackInfo
 
 
@@ -38,7 +39,7 @@ class YoutubeAudioClient:
                         "title": result["title"],
                         "author": result["uploader"],
                         "thumbnail": result["thumbnail"],
-                        "platform": self.request_data["platform"],
+                        "platform": SearchPlatform.YOUTUBE,
                         "requested_by": self.request_data["requested_by"],
                         "requested_at": self.request_data["requested_at"],
                     },
