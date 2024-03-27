@@ -1,5 +1,6 @@
 from typing import Generator
 
+from enums import SearchPlatform
 from Genius import GeniusClient
 from Music_cog.player.Track import MetaData, TrackInfo
 
@@ -39,12 +40,14 @@ class VKAudioClient:
                     "thumbnail": audio_info["album"]["thumb"]["photo_1200"]
                     if "album" in audio_info
                     else GeniusClient().get_thumbnail(title=audio_info["title"], author=audio_info["artist"]),
-                    "platform": self.request_data["platform"],
+                    "platform": SearchPlatform.VK,
                     "requested_by": self.request_data["requested_by"],
                     "requested_at": self.request_data["requested_at"],
                 },
-                "track_url": audio_info["url"],
-                "author_url": audio_info["url"],
+                "track_url": f"https://vk.com/audio{audio_info['release_audio_id']}" 
+                            if 'release_audio_id' in audio_info else audio_info["url"],
+                "author_url": f"https://vk.com/artist/{audio_info['main_artists'][0]['id']}"
+                            if 'main_artists' in audio_info else audio_info["url"],
             }
         )
 
