@@ -22,7 +22,7 @@ class DownloadMethodResolver:
             "single": [r"https?://(?:www\.)?vk\.com/audio(-?\d+_\d+)(?:_[0-9a-z]+)?"],
             "list": [
                 r"https?://(?:www\.)?vk\.com/music/(?:playlist|album)/(-?\d+)_(\d+)_?([a-z0-9_]+)?",
-                r"https?://(?:www\.)?vk\.com/audios?.+z=audio_playlist(-?\d+)_(\d+)(.+)?",
+                r"https?://(?:www\.)?vk\.com/.+z=audio_playlist(-?\d+)_(\d+)(.+)?",
             ],
         },
     }
