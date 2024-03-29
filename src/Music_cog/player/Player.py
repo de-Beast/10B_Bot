@@ -167,16 +167,12 @@ class MusicPlayer(discord.VoiceClient):
         if self._queue.current_track is None:
             self._playing_track = None
             if handler := await self._player_message_handler:
-                await handler.update_playing_track_embed(
-                    self.guild, self.track, self.shuffle
-                )
+                await handler.update_playing_track_embed(self.guild, self.track)
             self.play_music.cancel()
         elif self._queue.new_track:
             self._playing_track = await self.track.copy() if self.track else None
             if handler := await self._player_message_handler:
-                await handler.update_playing_track_embed(
-                    self.guild, self.track, self.shuffle
-                )
+                await handler.update_playing_track_embed(self.guild, self.track)
             await self.play_next()
 
     @tasks.loop(seconds=5)

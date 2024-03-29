@@ -5,6 +5,9 @@ from discord import ui
 
 from ABC import ViewABC
 from enums import SearchPlatform
+from Music_cog import Utils
+from Music_cog.room import Handlers
+from Music_cog.room.Embeds import EmbedDefault
 
 
 class SettingsView(ViewABC):
@@ -56,4 +59,17 @@ class SettingsView(ViewABC):
                 option.default = True
             else:
                 option.default = False
+
         await interaction.response.edit_message(view=self)
+
+        if (
+            handler := await Handlers.PlayerMessageHandler.from_room(
+                Utils.get_music_room(interaction.guild)
+            )
+        ) and len(handler.message.embeds) > 0:
+            embed = handler.message.embeds[0]
+            await handler.message.edit(
+                embed=await EmbedDefault.from_dict_with_updated_footer(
+                    embed.to_dict(), interaction.guild
+                )
+            )

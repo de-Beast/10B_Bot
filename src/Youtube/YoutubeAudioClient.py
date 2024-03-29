@@ -1,3 +1,4 @@
+import itertools
 from typing import Generator
 
 import yt_dlp as ytdl  # type: ignore
@@ -19,7 +20,7 @@ class YoutubeAudioClient:
         self.request_data = request_data
 
     def _get_generator(
-        self, audios: Generator[dict, None, None], amount: int
+        self, audios: Generator[dict, None, None] | itertools.islice, amount: int
     ) -> Generator[TrackInfo, None, None]:
         for num, audio in enumerate(audios):
             if num == amount:
@@ -48,7 +49,7 @@ class YoutubeAudioClient:
                 }
             )
 
-    def _search_raw(self, query: str) -> Generator[dict, None, None] | dict | None:
+    def _search_raw(self, query: str) -> Generator[dict, None, None] | itertools.islice | dict | None:
         with ytdl.YoutubeDL(self.YDL_OPTIONS) as ydl:
             results = ydl.extract_info(query, download=False, process=False)
             if results is None:
@@ -57,7 +58,7 @@ class YoutubeAudioClient:
             results = results.get("entries", results)
             if isinstance(results, dict):
                 return results
-            elif isinstance(results, Generator):
+            elif isinstance(results, (Generator, itertools.islice)):
                 return results
             return None
 
