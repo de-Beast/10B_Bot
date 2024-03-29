@@ -1,14 +1,14 @@
 import discord
+from discord.ext import bridge, commands
+from loguru import logger
+from pymongo.collection import Collection
+
 import MongoDB as mdb
 from ABC import CogABC
 from Bot import TenB_Bot
 from config import get_config
-from discord.ext import bridge, commands
 from enums import ThreadType
-from loguru import logger
 from MongoDB import DataBase, MusicRoomInfo
-from pymongo.collection import Collection
-
 from Music_cog.room.Embeds import EmbedDefault
 from Music_cog.room.Views.PlayerView import PlayerView
 from Music_cog.room.Views.SettingsView import SettingsView
@@ -67,7 +67,7 @@ class MusicRoomCog(CogABC):
         threads = await self.create_threads(room)
         view = PlayerView()
         message = await room.send(
-            embed=EmbedDefault(guild),
+            embed=await EmbedDefault.create_with_updated_footer(guild),
             view=view,
         )
         self.client.add_view(view, message_id=message.id)
@@ -216,9 +216,8 @@ class MusicRoomCog(CogABC):
             try:
                 await self.clear_room_from_messages(guild, include_bot=True)
                 await self.clear_room_from_reactions(guild)
-                if handler := await PlayerMessageHandler.from_room(
-                    Utils.get_music_room(guild)
-                ):
+                music_room = Utils.get_music_room(guild)
+                if handler := await PlayerMessageHandler.from_room(music_room):
                     await handler.update_playing_track_embed(guild)
                     await handler.reset_main_view()
                 await Handlers.update_threads_views(guild)

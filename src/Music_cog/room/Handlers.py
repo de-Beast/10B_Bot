@@ -2,10 +2,11 @@ import re
 from typing import Self
 
 import discord
+from loguru import logger
+
 from ABC import HandlerABC, ThreadHandlerABC
 from Bot import TenB_Bot
-from enums import SearchPlatform, Shuffle, ThreadType
-from loguru import logger
+from enums import SearchPlatform, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
@@ -13,7 +14,7 @@ from .Embeds import (
     EmbedDefault,
     EmbedPlayingTrack,
     EmbedTrack,
-    set_discription_from_track,
+    update_discription_from_track,
 )
 from .Views import PlayerView, SettingsView, setup_view_client
 
@@ -74,18 +75,16 @@ class PlayerMessageHandler(MessageHandler):
         self,
         guild: discord.Guild,
         track: Track | None = None,
-        shuffle: Shuffle = Shuffle.NOSHUFFLE,
     ):
         await self.message.edit(
-            embed=EmbedPlayingTrack(guild, track, shuffle)
+            embed=await EmbedPlayingTrack.create_with_updated_footer(guild, track)
             if track
-            else EmbedDefault(guild, shuffle)
+            else await EmbedDefault.create_with_updated_footer(guild)
         )
 
 
 class SettingsThreadHandler(ThreadHandlerABC):
-    @property
-    async def search_platform(self) -> SearchPlatform:
+    async def get_search_platform(self) -> SearchPlatform:
         thread_message: discord.Message | None = await self.get_thread_message(
             self.thread
         )
@@ -167,7 +166,7 @@ class HistoryThreadHandler(ThreadHandlerABC):
                             )
                             await message.edit(
                                 content=content,
-                                embed=set_discription_from_track(embed, track),
+                                embed=update_discription_from_track(embed, track),
                             )
                             return
                 break
