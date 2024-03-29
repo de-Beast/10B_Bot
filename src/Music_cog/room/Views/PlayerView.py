@@ -6,7 +6,6 @@ from discord import ui
 from ABC import ViewABC
 from enums import Loop, Shuffle
 from Music_cog import player as plr
-from Music_cog.room import Handlers as Handlers
 
 
 class PlayerView(ViewABC):
@@ -159,7 +158,6 @@ class PlayerView(ViewABC):
                         select.placeholder = "🔀 Queue is shuffled"
                 await interaction.response.edit_message(view=self)
                 await player.set_shuffle(self.__shuffle)
-                # player.shuffle = self.__shuffle
                 return
 
         option.default = True

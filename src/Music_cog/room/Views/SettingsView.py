@@ -17,10 +17,15 @@ class SettingsView(ViewABC):
         return self.__search_platform
 
     @classmethod
-    def from_message(cls, message: discord.Message, /, *, timeout: float | None = None) -> Self:
+    def from_message(
+        cls, message: discord.Message, /, *, timeout: float | None = None
+    ) -> Self:
         view: Self = super().from_message(message, timeout=timeout)
         for item in view.children:
-            if isinstance(item, ui.Select) and item.custom_id == "Search Platform Select":
+            if (
+                isinstance(item, ui.Select)
+                and item.custom_id == "Search Platform Select"
+            ):
                 for option in item.options:
                     if option.default:
                         view.__search_platform = SearchPlatform.get_key(option.value)
@@ -31,12 +36,19 @@ class SettingsView(ViewABC):
         row=1,
         options=[
             discord.SelectOption(
-                label="Youtube", value=SearchPlatform.YOUTUBE.value, emoji="🐷", default=True  # Youtube
+                label="Youtube",
+                value=SearchPlatform.YOUTUBE.value,
+                emoji="🐷",
+                default=True,  # Youtube
             ),
-            discord.SelectOption(label="VK", value=SearchPlatform.VK.value, emoji="🐭"),  # VK
+            discord.SelectOption(
+                label="VK", value=SearchPlatform.VK.value, emoji="🐭"
+            ),  # VK
         ],
     )
-    async def search_platform_callback(self, select: ui.Select, interaction: discord.Interaction):
+    async def search_platform_callback(
+        self, select: ui.Select, interaction: discord.Interaction
+    ):
         value = select.values[0]
         self.__search_platform = SearchPlatform.get_key(value)
         for option in select.options:

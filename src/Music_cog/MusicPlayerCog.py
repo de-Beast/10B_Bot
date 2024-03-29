@@ -39,7 +39,12 @@ class MusicPlayerCog(CogABC):
         if not isinstance(player := ctx.voice_client, MusicPlayer):
             return
 
-        if player and player.has_track and isinstance(ctx, bridge.BridgeExtContext) and not query:
+        if (
+            player
+            and player.has_track
+            and isinstance(ctx, bridge.BridgeExtContext)
+            and not query
+        ):
             await self.invoke_command(ctx, "pause_resume")
             return
         if not query:
@@ -49,7 +54,7 @@ class MusicPlayerCog(CogABC):
             ctx,
             "search_platform",
             (
-                await SettingsThreadHandler(thread).search_platform
+                await SettingsThreadHandler(thread).get_search_platform()
                 if (thread := Utils.get_thread(ctx.guild, ThreadType.SETTINGS))
                 else SearchPlatform.YOUTUBE
             ),
@@ -66,26 +71,39 @@ class MusicPlayerCog(CogABC):
         )
         await player.add_query(query, request_data)
         if ctx.is_app:
-            await ctx.respond(content="Track is successfully added", ephemeral=True, delete_after=5)
+            await ctx.respond(
+                content="Track is successfully added", ephemeral=True, delete_after=5
+            )
 
     @play.before_invoke
-    async def connection_to_voice_channel(self, ctx: bridge.BridgeApplicationContext) -> None:
+    async def connection_to_voice_channel(
+        self, ctx: bridge.BridgeApplicationContext
+    ) -> None:
         if isinstance(ctx.author, discord.User) or ctx.author is None:
             return
         if ctx.author.voice is None or ctx.author.voice.channel is None:
             return
 
         if ctx.voice_client is None:
-            await ctx.author.voice.channel.connect(cls=lambda client, connectable: MusicPlayer(client, connectable), reconnect=True)  # type: ignore
+            await ctx.author.voice.channel.connect(
+                cls=lambda client, connectable: MusicPlayer(client, connectable),  # type: ignore
+                reconnect=True,
+            )
         elif ctx.author.voice.channel != ctx.voice_client.channel:
             most_authoritative_role: discord.Role | None = None
             if isinstance(ctx.voice_client, MusicPlayer) and isinstance(
                 ctx.voice_client.channel, (discord.VoiceChannel, discord.StageChannel)
             ):
                 for member in ctx.voice_client.channel.members:
-                    if most_authoritative_role is None or most_authoritative_role > member.top_role:
+                    if (
+                        most_authoritative_role is None
+                        or most_authoritative_role > member.top_role
+                    ):
                         most_authoritative_role = member.top_role
-                if most_authoritative_role is not None and most_authoritative_role <= ctx.author.top_role:
+                if (
+                    most_authoritative_role is not None
+                    and most_authoritative_role <= ctx.author.top_role
+                ):
                     await ctx.voice_client.move_to(ctx.author.voice.channel)
                 else:
                     raise WrongVoiceError
@@ -99,14 +117,14 @@ class MusicPlayerCog(CogABC):
                 message = f"The Bot is currently playing music, try to join {ctx.me.voice.channel.mention}"
                 await ctx.respond(content=message, ephemeral=True, delete_after=5)
             else:
-                message = (
-                    "You are not in the voice channel, command will be reinvoked after this message is being deleted"
-                )
+                message = "You are not in the voice channel, command will be reinvoked after this message is being deleted"
                 await ctx.respond(content=message, ephemeral=True, delete_after=5)
                 try:
                     await self.client.wait_for(
                         "voice_state_update",
-                        check=lambda member, before, after: (member == ctx.author and after.channel is not None),
+                        check=lambda member, before, after: (
+                            member == ctx.author and after.channel is not None
+                        ),
                         timeout=5,
                     )
                 except asyncio.TimeoutError:
@@ -117,9 +135,13 @@ class MusicPlayerCog(CogABC):
                         and isinstance(ctx.command, bridge.BridgeSlashCommand)
                         and ctx.selected_options
                     ):
-                        await self.invoke_command(ctx, "play", query=ctx.selected_options[0]["value"])
+                        await self.invoke_command(
+                            ctx, "play", query=ctx.selected_options[0]["value"]
+                        )
                     elif isinstance(ctx, bridge.BridgeExtContext):
-                        await self.invoke_command(ctx, "play", query=ctx.message.clean_content)
+                        await self.invoke_command(
+                            ctx, "play", query=ctx.message.clean_content
+                        )
         elif isinstance(error, commands.BotMissingPermissions):
             message = f"Bot is missing {' and '.join(error.missing_permissions)} permissions to join the voice channel"
             await ctx.respond(content=message, ephemeral=True, delete_after=5)
@@ -127,7 +149,9 @@ class MusicPlayerCog(CogABC):
             message = "You can't move bot to your channel because someone in bot's channel has higher role than yours"
             await ctx.respond(content=message, ephemeral=True, delete_after=5)
 
-    @bridge.bridge_command(name="disconnect", aliases=["dis", "d", "leave"], enabled=False)
+    @bridge.bridge_command(
+        name="disconnect", aliases=["dis", "d", "leave"], enabled=False
+    )
     @Checks.is_connected()
     async def disconnect(self, ctx: bridge.BridgeApplicationContext):
         if isinstance(ctx.voice_client, MusicPlayer):
@@ -154,7 +178,9 @@ class MusicPlayerCog(CogABC):
             await ctx.respond("Please, use slash command", delete_after=5)
         else:
             logger.opt(exception=error).error("bruh")
-            await ctx.respond(f"Bruh... Something went wrong -> {error}", delete_after=5)
+            await ctx.respond(
+                f"Bruh... Something went wrong -> {error}", delete_after=5
+            )
 
 
 def setup(client: bridge.Bot):
