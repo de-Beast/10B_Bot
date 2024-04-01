@@ -83,7 +83,6 @@ class MusicPlayerCog(CogABC):
             return
         if ctx.author.voice is None or ctx.author.voice.channel is None:
             return
-
         if ctx.voice_client is None:
             await ctx.author.voice.channel.connect(
                 cls=lambda client, connectable: MusicPlayer(client, connectable),  # type: ignore
