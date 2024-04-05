@@ -41,7 +41,7 @@ class MusicPlayerCog(CogABC):
 
         if (
             player
-            and player.has_track
+            and player.is_playing_or_paused
             and isinstance(ctx, bridge.BridgeExtContext)
             and not query
         ):
@@ -83,10 +83,9 @@ class MusicPlayerCog(CogABC):
             return
         if ctx.author.voice is None or ctx.author.voice.channel is None:
             return
-
         if ctx.voice_client is None:
             await ctx.author.voice.channel.connect(
-                cls=lambda client, connectable: MusicPlayer(client, connectable),  # type: ignore
+                cls=MusicPlayer,  # type: ignore
                 reconnect=True,
             )
         elif ctx.author.voice.channel != ctx.voice_client.channel:
@@ -113,7 +112,10 @@ class MusicPlayerCog(CogABC):
         self, ctx: bridge.BridgeApplicationContext, error: commands.CommandError
     ) -> None:
         if isinstance(error, NotInVoiceError):
-            if isinstance(ctx.voice_client, MusicPlayer) and ctx.voice_client.has_track:
+            if (
+                isinstance(ctx.voice_client, MusicPlayer)
+                and ctx.voice_client.is_playing_or_paused
+            ):
                 message = f"The Bot is currently playing music, try to join {ctx.me.voice.channel.mention}"
                 await ctx.respond(content=message, ephemeral=True, delete_after=5)
             else:

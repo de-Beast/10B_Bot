@@ -10,12 +10,7 @@ from enums import SearchPlatform, ThreadType
 from Music_cog import Utils
 from Music_cog.player.Track import Track
 
-from .Embeds import (
-    EmbedDefault,
-    EmbedPlayingTrack,
-    EmbedTrack,
-    update_discription_from_track,
-)
+from .Embeds import EmbedDefault, EmbedPlayer, EmbedTrack, update_discription_from_track
 from .Views import PlayerView, SettingsView, setup_view_client
 
 
@@ -27,10 +22,15 @@ def setup(client: TenB_Bot):
 class MessageHandler(HandlerABC):
     def __init__(self, message: discord.Message):
         self.__message: discord.Message = message
+        self.__guild: discord.Guild = message.guild  # type: ignore
 
     @property
     def message(self):
         return self.__message
+
+    @property
+    def guild(self):
+        return self.__guild
 
 
 class PlayerMessageHandler(MessageHandler):
@@ -45,6 +45,12 @@ class PlayerMessageHandler(MessageHandler):
     @property
     def channel(self):
         return self.message.channel
+
+    @classmethod
+    async def from_guild_async(cls, guild: discord.Guild | None) -> Self | None:
+        if room := Utils.get_music_room(guild):
+            message = await cls.get_main_message(room)
+        return cls(message) if room and message else None
 
     @classmethod
     async def from_room(cls, room: discord.TextChannel | None) -> Self | None:
@@ -73,17 +79,25 @@ class PlayerMessageHandler(MessageHandler):
 
     async def update_playing_track_embed(
         self,
-        guild: discord.Guild,
         track: Track | None = None,
     ):
         await self.message.edit(
-            embed=await EmbedPlayingTrack.create_with_updated_footer(guild, track)
+            embed=await EmbedPlayer.create_with_updated_footer(self.guild, track)
             if track
-            else await EmbedDefault.create_with_updated_footer(guild)
+            else await EmbedDefault.create_with_updated_footer(self.guild)
         )
 
 
 class SettingsThreadHandler(ThreadHandlerABC):
+    @classmethod
+    def from_guild(cls, guild: discord.Guild) -> Self | None:
+        thread = Utils.get_thread(guild, ThreadType.SETTINGS)
+        return cls(thread) if thread else None
+    
+    @staticmethod
+    def check(thread: "ThreadHandlerABC") -> bool:
+        return thread.thread == Utils.get_thread(thread.thread.guild, ThreadType.SETTINGS)
+
     async def get_search_platform(self) -> SearchPlatform:
         thread_message: discord.Message | None = await self.get_thread_message(
             self.thread
@@ -112,16 +126,36 @@ class SettingsThreadHandler(ThreadHandlerABC):
 
 
 class QueueThreadHandler(ThreadHandlerABC):
-    async def send_track_message(
-        self, track: Track, track_number: int, /, *, is_loop: bool = False
-    ) -> None:
-        if is_loop:
-            await self.thread.purge(
-                limit=1, check=lambda m: m.author == self.client.user, oldest_first=True
-            )
-            await self.update_track_numbers()
+    def __init__(self, thread: discord.Thread):
+        super().__init__(thread)
+        self._track_messages: dict[int, int] = {}
 
-        await self.thread.send(embed=EmbedTrack(track, track_number))
+    @classmethod
+    def from_guild(cls, guild: discord.Guild) -> Self | None:
+        thread = Utils.get_thread(guild, ThreadType.QUEUE)
+        return cls(thread) if thread else None
+
+    @staticmethod
+    def check(thread: "ThreadHandlerABC") -> bool:
+        return thread.thread == Utils.get_thread(thread.thread.guild, ThreadType.QUEUE)
+
+    async def send_track_message(
+        self, track: Track, track_index: int, *, is_playing: bool = False
+    ) -> None:
+        embed = EmbedTrack(track, track_index + 1)
+        if is_playing:
+            embed = EmbedTrack.update_color(embed)
+        message = await self.thread.send(embed=embed)
+        self._track_messages[track_index] = message.id
+
+    async def update_track_color(
+        self, track_number: int, *, is_playing: bool = True
+    ) -> None:
+        if message_id := self._track_messages.get(track_number):
+            message = await self.thread.fetch_message(message_id)
+            embed = message.embeds[0]
+            embed = EmbedTrack.update_color(embed, is_playing=is_playing)
+            await message.edit(embed=embed)
 
     async def remove_track_message(self, /, *, all: bool = False) -> None:
         await self.thread.purge(
@@ -131,6 +165,8 @@ class QueueThreadHandler(ThreadHandlerABC):
         )
         if not all:
             await self.update_track_numbers()
+        else:
+            self._track_messages = {}
 
     async def update_track_numbers(self) -> None:
         counter = 1
@@ -147,6 +183,15 @@ class QueueThreadHandler(ThreadHandlerABC):
 
 
 class HistoryThreadHandler(ThreadHandlerABC):
+    @classmethod
+    def from_guild(cls, guild: discord.Guild) -> Self | None:
+        thread = Utils.get_thread(guild, ThreadType.HISTORY)
+        return cls(thread) if thread else None
+
+    @staticmethod
+    def check(thread: "ThreadHandlerABC") -> bool:
+        return thread.thread == Utils.get_thread(thread.thread.guild, ThreadType.HISTORY)
+
     async def store_track_in_history(self, track: Track) -> None:
         async for message in self.thread.history():
             if len(message.embeds) > 0:
@@ -177,5 +222,5 @@ async def update_threads_views(guild: discord.Guild):
     for thread_type in ThreadType:
         match thread_type:
             case ThreadType.SETTINGS:
-                if thread := Utils.get_thread(guild, thread_type):
-                    await SettingsThreadHandler(thread).update_thread_views()
+                if handler := SettingsThreadHandler.from_guild(guild):
+                    await handler.update_thread_views()

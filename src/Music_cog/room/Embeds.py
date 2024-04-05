@@ -22,14 +22,14 @@ class EmbedDefault(discord.Embed):
     def __init__(
         self,
         guild: discord.Guild | None = None,
+        color: discord.Colour | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.title = "Queue is clear"
         self.set_image(url=message_config["back_image"])
         self.type = "rich"
-        self.colour = discord.Colour(0x00FF00)
-
+        self.colour = color if color else discord.Colour(0x00FF00)
         if guild:
             self._set_thread_links_in_description(guild)
 
@@ -73,10 +73,11 @@ class EmbedTrack(EmbedDefault):
         self,
         track: Track,
         number: int | None = None,
+        color: discord.Colour | None = None,
         guild: discord.Guild | None = None,
         **kwargs,
     ) -> None:
-        super().__init__(guild, **kwargs)
+        super().__init__(guild, color if color else discord.Colour.dark_grey(), **kwargs)
         self.remove_image()
 
         self.title = track.title
@@ -91,15 +92,21 @@ class EmbedTrack(EmbedDefault):
             f"Platform: {track.platform.value}"
         )
 
+    @staticmethod
+    def update_color(embed: "EmbedTrack", *, is_playing: bool = True) -> "EmbedTrack":
+        embed.colour = discord.Colour(0x00FF00) if is_playing else discord.Colour.dark_grey()
+        return embed
 
-class EmbedPlayingTrack(EmbedTrack):
+
+class EmbedPlayer(EmbedTrack):
     def __init__(
         self,
         guild: discord.Guild,
         track: Track,
+        color: discord.Colour = discord.Colour(0x00FF00),
         **kwargs,
     ) -> None:
-        super().__init__(track, None, guild, **kwargs)
+        super().__init__(track, None, color, guild, **kwargs)
         self._set_thread_links_in_description(guild)
 
         self.set_image(
