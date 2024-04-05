@@ -5,7 +5,6 @@ from discord import ui
 
 from ABC import ViewABC
 from enums import SearchPlatform
-from Music_cog import Utils
 from Music_cog.room import Handlers
 from Music_cog.room.Embeds import EmbedDefault
 
@@ -63,8 +62,8 @@ class SettingsView(ViewABC):
         await interaction.response.edit_message(view=self)
 
         if (
-            handler := await Handlers.PlayerMessageHandler.from_room(
-                Utils.get_music_room(interaction.guild)
+            handler := await Handlers.PlayerMessageHandler.from_guild_async(
+                interaction.guild
             )
         ) and len(handler.message.embeds) > 0:
             embed = handler.message.embeds[0]

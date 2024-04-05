@@ -35,11 +35,11 @@ class VKAudioClient:
             {
                 "source": audio_info["url"],
                 "meta": {
-                    "title": audio_info["title"],
+                    "title": audio_info["title"] + f" *{audio_info['subtitle']}*" if "subtitle" in audio_info else audio_info["title"],
                     "author": audio_info["artist"],
                     "thumbnail": audio_info["album"]["thumb"]["photo_1200"]
                     if "album" in audio_info
-                    else GeniusClient().get_thumbnail(title=audio_info["title"], author=audio_info["artist"]),
+                    else GeniusClient().get_thumbnail(title=audio_info["title"] + " " + audio_info['subtitle'] if "subtitle" in audio_info else audio_info["title"], author=audio_info["artist"]),
                     "platform": SearchPlatform.VK,
                     "requested_by": self.request_data["requested_by"],
                     "requested_at": self.request_data["requested_at"],

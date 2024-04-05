@@ -21,7 +21,9 @@ class CogABC(ABC, commands.Cog, metaclass=CogABCMeta):
 
     async def invoke_command(
         self,
-        ctx: discord.ApplicationContext | bridge.BridgeExtContext | bridge.BridgeApplicationContext,
+        ctx: discord.ApplicationContext
+        | bridge.BridgeExtContext
+        | bridge.BridgeApplicationContext,
         name: str,
         /,
         *args,
@@ -59,7 +61,9 @@ class ViewABC(ABC, ui.View):
 
     @classmethod
     @abstractmethod
-    def from_message(cls, message: discord.Message, /, *, timeout: float | None = None) -> Self:
+    def from_message(
+        cls, message: discord.Message, /, *, timeout: float | None = None
+    ) -> Self:
         view = cls(timeout=timeout)
         view.clear_items()
         for component in ui.view._walk_all_components(message.components):
@@ -75,6 +79,11 @@ class HandlerABC(ABC):
     def client(self):
         return HandlerABC._client
 
+    @classmethod
+    @abstractmethod
+    async def from_guild_async(cls, guild: discord.Guild) -> Self | None:
+        pass
+
 
 class ThreadHandlerABC(HandlerABC, ABC):
     def __init__(self, thread: discord.Thread) -> None:
@@ -83,3 +92,17 @@ class ThreadHandlerABC(HandlerABC, ABC):
     @property
     def thread(self):
         return self.__thread
+
+    @classmethod
+    @abstractmethod
+    def from_guild(cls, guild: discord.Guild) -> Self | None:
+        pass
+
+    @classmethod
+    async def from_guild_async(cls, guild: discord.Guild) -> Self | None:
+        return cls.from_guild(guild)
+
+    @staticmethod
+    @abstractmethod
+    def check(thread: "ThreadHandlerABC") -> bool:
+        pass

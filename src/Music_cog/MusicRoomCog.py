@@ -188,8 +188,11 @@ class MusicRoomCog(CogABC):
                 message.guild
             ) and not message.content.startswith(prefix, 0, len(prefix)):
                 ctx: bridge.BridgeExtContext = await self.client.get_context(message)
+                queries = message.clean_content.split("\n")
                 try:
-                    await self.invoke_command(ctx, "play", query=message.clean_content)
+                    for query in queries:
+                        if query:
+                            await self.invoke_command(ctx, "play", query=query)
                 except Exception as e:
                     print(e)
             await self.clear_room_from_messages(message.guild)
@@ -216,9 +219,8 @@ class MusicRoomCog(CogABC):
             try:
                 await self.clear_room_from_messages(guild, include_bot=True)
                 await self.clear_room_from_reactions(guild)
-                music_room = Utils.get_music_room(guild)
-                if handler := await PlayerMessageHandler.from_room(music_room):
-                    await handler.update_playing_track_embed(guild)
+                if handler := await PlayerMessageHandler.from_guild_async(guild):
+                    await handler.update_playing_track_embed()
                     await handler.reset_main_view()
                 await Handlers.update_threads_views(guild)
             except Exception as e:

@@ -1,37 +1,20 @@
 import asyncio
-import itertools
-from pickle import FALSE
-from typing import Any, Coroutine, Generator, Literal, overload
+from typing import Coroutine, Generator
 
 import discord
+import discord.types
+import discord.types.voice
 from discord.ext import bridge, tasks
 from loguru import logger
 
 from enums import Loop, Shuffle
-from Music_cog import Utils
 from Music_cog.room.Handlers import PlayerMessageHandler
 
-from . import DownloadMethodResolver as plUtils
+from .DownloadMethodResolver import DownloadMethodResolver
 from .Queue import Queue
 from .Track import MetaData, Track, TrackInfo
 
 TIMEOUT = 60
-
-
-class _MissingSentinel:
-    def __eq__(self, other) -> bool:
-        return False
-
-    def __bool__(self) -> bool:
-        return False
-
-    def __repr__(self) -> str:
-        return "..."
-
-
-MISSING: Any = _MissingSentinel()
-
-# TODO: Исправить зависимости от многих состояний (self.track, self.has_track, self._playing_track и т.д.)
 
 
 class MusicPlayer(discord.VoiceClient):
@@ -48,7 +31,7 @@ class MusicPlayer(discord.VoiceClient):
         self._add_tracks_task: asyncio.Task | None = None
         self._play_task: asyncio.Task | None = None
 
-        self._track: Track | None = MISSING
+        self._track: Track | None = None
 
     @property
     def guild(self) -> discord.Guild:
@@ -56,28 +39,34 @@ class MusicPlayer(discord.VoiceClient):
 
     @property
     async def _player_message_handler(self) -> PlayerMessageHandler | None:
-        return await PlayerMessageHandler.from_room(Utils.get_music_room(self.guild))
+        return await PlayerMessageHandler.from_guild_async(self.guild)
 
     @property
-    def has_track(self) -> bool:
+    def is_playing_or_paused(self) -> bool:
         return self.is_playing() or self.is_paused()
 
     @property
     def track(self) -> Track | None:
-        if self._track is MISSING:
-            return None
         return self._track
 
     def prepare_next_track(self, *, force=False) -> None:
-        if not self.queue.is_started:
+        if self.queue.state is Queue.State.START:
             self._track = self.queue.current()
             return
-
+        if (
+            self.queue.looping is Loop.NOLOOP
+            and self.queue.state is Queue.State.RUNNING
+        ):
+            self._track = self.queue.next()
+            return
         self._track = self.queue.next(force=force)
 
-    def prepare_prev_track(self) -> None:
-        if not self.has_track and len(self.queue) > 0:
-            self._track = self.queue.current()
+    def prepare_prev_track(self, *, repeat_current: bool = False) -> None:
+        if repeat_current or self.queue.state is Queue.State.END:
+            if not self._track:
+                self._track = self.queue.current()
+            return
+
         self._track = self.queue.prev()
 
     @property
@@ -104,11 +93,13 @@ class MusicPlayer(discord.VoiceClient):
         if self._add_tracks_task:
             self._add_tracks_task.cancel()
             await self._add_tracks_task
+            self._add_tracks_task = None
 
         await self.queue.clear()
-        if self.has_track:
+        if self.is_playing_or_paused:
             self.stop()
-        self._track = MISSING
+        self._track = None
+        await self.before_play()
 
     def toggle(self):
         if self.is_playing():
@@ -118,6 +109,7 @@ class MusicPlayer(discord.VoiceClient):
 
     async def set_audio_source(self):
         if not await self.before_play():
+            self.stop()
             return
 
         track = await self.track.copy()  # type: ignore
@@ -127,23 +119,35 @@ class MusicPlayer(discord.VoiceClient):
         if len(self.queue) == 0:
             return
 
-        match self.looping:
-            case Loop.NOLOOP:
-                self.prepare_next_track(force=self.has_track)
-            case _:
-                self.prepare_next_track(force=True)
-        self.loop.create_task(self.set_audio_source())
+        self.prepare_next_track(force=True)
+        if not self.is_playing_or_paused:
+            self._play_task = self.loop.create_task(self.play_next())
+        else:
+            self.loop.create_task(self.set_audio_source())
 
     def prev(self):
         if len(self.queue) == 0:
             return
 
         self.prepare_prev_track()
-        self.loop.create_task(self.set_audio_source())
+        if not self.is_playing_or_paused:
+            self._play_task = self.loop.create_task(self.play_next())
+        else:
+            self.loop.create_task(self.set_audio_source())
+
+    def repeat_current(self):
+        if len(self.queue) == 0:
+            return
+
+        self.prepare_prev_track(repeat_current=True)
+        if not self.is_playing_or_paused:
+            self._play_task = self.loop.create_task(self.play_next())
+        else:
+            self.loop.create_task(self.set_audio_source())
 
     async def before_play(self) -> bool:
         if handler := await self._player_message_handler:
-            await handler.update_playing_track_embed(self.guild, self.track)
+            await handler.update_playing_track_embed(self.track)
 
         return self.track is not None
 
@@ -152,8 +156,9 @@ class MusicPlayer(discord.VoiceClient):
             self._play_task = None
             return
 
-        track: Track = await self.track.copy()  # type: ignore
-        self.play(track.src, after=self.after_play)
+        if not self.is_playing_or_paused:
+            track: Track = await self.track.copy()  # type: ignore
+            self.play(track.src, after=self.after_play)
 
     def after_play(self, error: Exception | None = None):
         if error:
@@ -162,7 +167,7 @@ class MusicPlayer(discord.VoiceClient):
         self._play_task = self.loop.create_task(self.play_next())
 
     async def add_query(self, query: str, request_data: MetaData) -> None:
-        resolver = plUtils.DownloadMethodResolver(query, request_data)
+        resolver = DownloadMethodResolver(query, request_data)
         tracks_info = await resolver.proccess_query()
         if self._add_tracks_task is None:
             self._add_tracks_task = asyncio.create_task(
@@ -185,6 +190,14 @@ class MusicPlayer(discord.VoiceClient):
     async def _add_tracks_to_queue(
         self, tracks_info: Generator[TrackInfo, None, None] | TrackInfo | None
     ) -> None:
+        if not self.is_connected():
+            logger.error("Voice protocol is not removed from the internal state cache")
+            if handler := await self._player_message_handler:
+                await handler.channel.send(
+                    "Please, wait a moment, we need to clean up 🧹", delete_after=10
+                )
+            return
+
         if tracks_info is None:
             logger.error("No tracks to add to queue")
             if handler := await self._player_message_handler:
@@ -206,8 +219,9 @@ class MusicPlayer(discord.VoiceClient):
         except asyncio.CancelledError:
             logger.error("Add tracks task is Cancelled")
         else:
-            if not self.has_track:
-                self.after_play()
+            if not self._play_task:
+                self.prepare_next_track()
+                self._play_task = self.loop.create_task(self.play_next())
 
             logmessage = "TRACKS QUEUE:"
             for track in self.queue:
@@ -215,18 +229,17 @@ class MusicPlayer(discord.VoiceClient):
             logger.opt(colors=True).info(logmessage)
 
     async def disconnect(self, *, force: bool = False):
+        self.disconnect_timeout.stop()
         await self.stop_player()
-        self.disconnect_timeout.cancel()
         await super().disconnect(force=force)
-        await self.voice_disconnect()
 
     @tasks.loop(seconds=5)
     async def disconnect_timeout(self):
         c = 0
-        while not self.has_track:
+        while not self.is_playing_or_paused:
             await asyncio.sleep(1)
             c += 1
-            if self.has_track:
+            if self.is_playing_or_paused:
                 break
             elif c == TIMEOUT:
                 await self.disconnect(force=True)

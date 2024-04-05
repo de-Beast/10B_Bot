@@ -19,7 +19,7 @@ class GeniusClient:
     def get_thumbnail(self, title: str | None = None, author: str | None = None) -> str | None:
         if title is not None and author is not None:
             self.get_song(title, author)
-        return self.song.song_art_image_thumbnail_url if self.song else None
+        return self.song.song_art_image_url if self.song else None
 
     def get_lyrics(self, title: str | None = None, author: str | None = None) -> str | None:
         if title is not None and author is not None:

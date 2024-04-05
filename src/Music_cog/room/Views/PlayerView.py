@@ -65,6 +65,21 @@ class PlayerView(ViewABC):
         await interaction.response.defer()
 
     @ui.button(
+        custom_id="Repeat Button", emoji="↩️", style=discord.ButtonStyle.primary, row=0
+    )  # repeat
+    async def repeat_callback(
+        self, button: ui.Button, interaction: discord.Interaction
+    ):
+        if interaction.guild is not None:
+            player: plr.MusicPlayer | Any = interaction.guild.voice_client
+            if isinstance(player, plr.MusicPlayer):
+                player.repeat_current()
+                self.set_to_default_view(only_play_pause_button=True)
+                await interaction.response.edit_message(view=self)
+                return
+        await interaction.response.defer()
+
+    @ui.button(
         custom_id="Pause Resume Button",
         emoji="⏸️",
         style=discord.ButtonStyle.success,
@@ -151,13 +166,17 @@ class PlayerView(ViewABC):
     async def shuffle_callback(
         self, select: ui.Select, interaction: discord.Interaction
     ):
-        for opt in select.options:
-            opt.default = False
         option = select.options[0]
-
         if interaction.guild is not None:
             player: plr.MusicPlayer | Any = interaction.guild.voice_client
-            if isinstance(player, plr.MusicPlayer) and player.has_track:
+            if isinstance(player, plr.MusicPlayer):
+                if not player.is_playing_or_paused:
+                    await interaction.response.edit_message(view=self)
+                    return
+                
+                for opt in select.options:
+                    opt.default = False
+                
                 value = select.values[0]
                 self.__shuffle = Shuffle.get_key(value)
 

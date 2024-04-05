@@ -1,5 +1,3 @@
-import asyncio
-import itertools
 import random
 import typing
 from collections import deque
@@ -8,8 +6,7 @@ from enum import Enum
 import discord
 from discord.ext import bridge
 
-from enums import Loop, Shuffle, ThreadType
-from Music_cog import Utils
+from enums import Loop, Shuffle
 from Music_cog.room.Handlers import (
     HistoryThreadHandler,
     PlayerMessageHandler,
@@ -25,6 +22,11 @@ from .Track import Track
 
 
 class SimpleQueue(deque):
+    class State(Enum):
+        START = 0
+        RUNNING = 1
+        END = 2
+
     def __init__(self, client: bridge.Bot, guild: discord.Guild) -> None:
         super().__init__(self)
         self._current_index = 0
@@ -33,17 +35,19 @@ class SimpleQueue(deque):
         self.guild = guild
 
         self._looping: Loop = Loop.NOLOOP
-        self._is_started = False
+        self._state = SimpleQueue.State.START
 
     async def init(self) -> None:
-        if player_handler := await PlayerMessageHandler.from_room(
-            Utils.get_music_room(self.guild)
-        ):
+        if player_handler := await PlayerMessageHandler.from_guild_async(self.guild):
             self._looping = player_handler.loop
 
     @property
-    def is_started(self) -> bool:
-        return self._is_started
+    def state(self) -> "SimpleQueue.State":
+        return self._state
+
+    @state.setter
+    def state(self, value: "SimpleQueue.State") -> None:
+        self._state = value
 
     @property
     def current_index(self) -> int:
@@ -62,7 +66,7 @@ class SimpleQueue(deque):
     def clear(self) -> None:
         super().clear()
         self.current_index = 0
-        self._is_started = False
+        self.state = SimpleQueue.State.START
 
     def _change_index(self, step: int) -> None:
         self.current_index = self.current_index + step
@@ -73,6 +77,7 @@ class SimpleQueue(deque):
                 if force:
                     self._change_index(1)
                 elif self.current_index == len(self) - 1:
+                    self.state = SimpleQueue.State.END
                     return None
                 else:
                     self._change_index(1)
@@ -81,29 +86,26 @@ class SimpleQueue(deque):
                     self._change_index(1)
             case Loop.LOOP:
                 self._change_index(1)
-        self._is_started = False
         return self.current()
 
     def prev(self) -> Track | None:
-        match self._looping:
-            case Loop.NOLOOP:
-                if self.current_index != 0:
-                    self._change_index(-1)
-            case Loop.LOOP:
-                self._change_index(-1)
+        self._change_index(-1)
         return self.current()
 
     def current(self) -> Track | None:
         if len(self) == 0:
             return None
-        if not self._is_started:
-            self._is_started = True
+        if self.state is not SimpleQueue.State.RUNNING:
+            self.state = SimpleQueue.State.RUNNING
         return self[self.current_index]
 
 
 class Queue(SimpleQueue):
     def __init__(self, client: bridge.Bot, guild: discord.Guild) -> None:
         super().__init__(client, guild)
+        self.__queue_handler: QueueThreadHandler | None = None
+        self.__history_handler: HistoryThreadHandler | None = None
+
         self.__shuffled_queue: SimpleQueue = SimpleQueue(client, guild)
         self.__shuffle: Shuffle = Shuffle.NOSHUFFLE
 
@@ -115,12 +117,20 @@ class Queue(SimpleQueue):
                 return self.__shuffled_queue[__key]
 
     @property
-    def is_started(self) -> bool:
+    def state(self) -> SimpleQueue.State:
         match self.shuffle:
             case Shuffle.NOSHUFFLE:
-                return super().is_started
+                return super().state
             case Shuffle.SHUFFLE:
-                return self.__shuffled_queue.is_started
+                return self.__shuffled_queue.state
+
+    @state.setter
+    def state(self, value: SimpleQueue.State) -> None:
+        match self.shuffle:
+            case Shuffle.NOSHUFFLE:
+                SimpleQueue.state.fset(self, value)  # type: ignore
+            case Shuffle.SHUFFLE:
+                self.__shuffled_queue.state = value
 
     @property
     def current_index(self) -> int:
@@ -134,9 +144,18 @@ class Queue(SimpleQueue):
     def current_index(self, value: int) -> None:
         match self.shuffle:
             case Shuffle.NOSHUFFLE:
-                SimpleQueue.current_index.fset(self, value) # type: ignore
+                SimpleQueue.current_index.fset(self, value)  # type: ignore
             case Shuffle.SHUFFLE:
                 self.__shuffled_queue.current_index = value
+                current = self.current()
+                SimpleQueue.current_index.fset(  # type: ignore
+                    self, self.index(current) if current else 0
+                )
+
+    def _change_index(self, step: int) -> None:
+        prev_index = self.current_index
+        super()._change_index(step)
+        self.client.loop.create_task(self._update_current_track_in_thread(prev_index))
 
     async def init(self) -> None:
         await super().init()
@@ -146,15 +165,22 @@ class Queue(SimpleQueue):
 
     @property
     def _queue_handler(self) -> QueueThreadHandler | None:
-        if thread := Utils.get_thread(self.guild, ThreadType.QUEUE):
-            return QueueThreadHandler(thread)
-        return None
+        if not self.__queue_handler:
+            self.__queue_handler = QueueThreadHandler.from_guild(self.guild)
+        if not self.__queue_handler or not QueueThreadHandler.check(self.__queue_handler):
+            return None
+
+        return self.__queue_handler
 
     @property
     def _history_handler(self) -> HistoryThreadHandler | None:
-        if thread := Utils.get_thread(self.guild, ThreadType.HISTORY):
-            return HistoryThreadHandler(thread)
-        return None
+        if not self.__history_handler:
+            self.__history_handler = HistoryThreadHandler.from_guild(self.guild)
+        if not self.__history_handler or HistoryThreadHandler.check(
+            self.__history_handler
+        ):
+            return None
+        return self.__history_handler
 
     @property
     def looping(self) -> Loop:
@@ -172,30 +198,56 @@ class Queue(SimpleQueue):
     def shuffle(self) -> Shuffle:
         return self.__shuffle
 
+    def next(self, *, force=False) -> Track | None:
+        next = super().next(force=force)
+        if next is None:
+            self.client.loop.create_task(self._update_current_track_in_thread(prev_index=self.current_index))
+        return next
+    
     async def set_shuffle(self, shuffle_type: Shuffle):
         if isinstance(shuffle_type, Shuffle):
             match shuffle_type:
                 case Shuffle.SHUFFLE:
-                    self.__shuffled_queue.clear()
-                    self.__shuffled_queue.extend(self)
-                    self.__shuffled_queue.remove(self.current())
-                    random.shuffle(self.__shuffled_queue)
-                    self.__shuffled_queue.appendleft(self.current())
+                    state = self.state
+                    self._setup_shuffled_queue()
+                    self.__shuffle = shuffle_type
+                    if state is SimpleQueue.State.END:
+                        self.state = SimpleQueue.State.START
+                    else:
+                        self.state = state
 
-                    if handler := self._queue_handler:
-                        await handler.remove_track_message(all=True)
-                        for index, track in enumerate(self.__shuffled_queue):
-                            await handler.send_track_message(track, index + 1)
+                    await self._try_reload_queue_thread()
                 case Shuffle.NOSHUFFLE:
-                    if len(self.__shuffled_queue) > 0:
-                        self.__shuffled_queue.clear()
-                        if handler := self._queue_handler:
-                            await handler.remove_track_message(all=True)
-                            for index, track in enumerate(self):
-                                await handler.send_track_message(track, index + 1)
-            self.__shuffle = shuffle_type
+                    state = self.state
+                    self.__shuffled_queue.clear()
+                    self.__shuffle = shuffle_type
+                    if state is SimpleQueue.State.END:
+                        self.state = SimpleQueue.State.START
+                    else:
+                        self.state = state
+                    await self._try_reload_queue_thread()
         else:
             raise TypeError("Shuffle type must be Shuffle enum")
+
+    async def _try_reload_queue_thread(self):
+        if handler := self._queue_handler:
+            await handler.remove_track_message(all=True)
+            for index, track in enumerate(
+                self.__shuffled_queue if self.shuffle is Shuffle.SHUFFLE else self
+            ):
+                await handler.send_track_message(
+                    track, index, is_playing=track == self.current()
+                )
+
+    def _setup_shuffled_queue(self):
+        self.__shuffled_queue.clear()
+        self.__shuffled_queue.extend(self)
+        shuffle = self.shuffle
+        self.__shuffle = Shuffle.NOSHUFFLE
+        self.__shuffled_queue.remove(self.current())
+        random.shuffle(self.__shuffled_queue)
+        self.__shuffled_queue.appendleft(self.current())
+        self.__shuffle = shuffle
 
     async def clear(self):
         super().clear()
@@ -210,6 +262,15 @@ class Queue(SimpleQueue):
         if self.__shuffle is Shuffle.SHUFFLE:
             await self.__shuffled_queue.add_track(track)
         if queue_handler := self._queue_handler:
-            await queue_handler.send_track_message(track, len(self))
+            await queue_handler.send_track_message(
+                track, len(self) - 1, is_playing=track == self[self.current_index]
+            )
         if history_handler := self._history_handler:
             await history_handler.store_track_in_history(track)
+
+    async def _update_current_track_in_thread(self, prev_index: int | None = None):
+        if queue_handler := self._queue_handler:
+            if self.current_index != prev_index:
+                await queue_handler.update_track_color(self.current_index)
+            if prev_index is not None:
+                await queue_handler.update_track_color(prev_index, is_playing=False)
