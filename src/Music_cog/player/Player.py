@@ -16,6 +16,9 @@ from .Track import MetaData, Track, TrackInfo
 
 TIMEOUT = 60
 
+# TODO Обновление текущего трека в очереди при повторе текущего трека
+# TODO Включение трека сразу после добавления, если он добавляется из списка
+
 
 class MusicPlayer(discord.VoiceClient):
     def __init__(self, client: bridge.Bot, channel: discord.VoiceChannel):
@@ -186,6 +189,8 @@ class MusicPlayer(discord.VoiceClient):
             self._add_tracks_task.add_done_callback(self._after_add_tracks_to_queue)
         else:
             self._add_tracks_task = None
+
+    # TODO Если добавляется несколько тректов, то первый добавленый должен сразу начать играть
 
     async def _add_tracks_to_queue(
         self, tracks_info: Generator[TrackInfo, None, None] | TrackInfo | None

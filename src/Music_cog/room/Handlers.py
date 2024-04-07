@@ -1,5 +1,5 @@
 import re
-from typing import Self
+from typing import Literal, Self, overload
 
 import discord
 from loguru import logger
@@ -157,7 +157,21 @@ class QueueThreadHandler(ThreadHandlerABC):
             embed = EmbedTrack.update_color(embed, is_playing=is_playing)
             await message.edit(embed=embed)
 
-    async def remove_track_message(self, /, *, all: bool = False) -> None:
+
+    @overload
+    async def remove_track_message(self, /, *, track_index: int, message_id: Literal[None] = None, all: Literal[False] = False) -> None:
+        pass
+    
+    @overload
+    async def remove_track_message(self, /, *, track_index: Literal[None] = None, message_id: int, all: Literal[False] = False) -> None:
+        pass
+    
+    @overload
+    async def remove_track_message(self, /, *, track_index: Literal[None] = None, message_id: Literal[None] = None, all: Literal[True] = True) -> None:
+        pass
+    
+    async def remove_track_message(self, /, *, track_index: int | None = None, message_id: int | None = None, all: bool = False) -> None:
+        (await self.thread.fetch_message(123)).delete()
         await self.thread.purge(
             limit=1 if not all else None,
             check=lambda m: m.author == self.client.user,

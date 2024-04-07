@@ -10,11 +10,14 @@ from enums import SearchPlatform, ThreadType
 from Exceptions import NotInVoiceError, WrongTextChannelError
 
 from . import Utils
+from .player import MusicPlayer
 from .room.Handlers import (
     HistoryThreadHandler,
     QueueThreadHandler,
     SettingsThreadHandler,
 )
+
+# TODO Команда для удаления трека из очереди
 
 
 class MusicThreadCog(CogABC):
@@ -30,16 +33,15 @@ class MusicThreadCog(CogABC):
                 except discord.HTTPException as e:
                     logger.error("HTTP Error: ", e)
 
-    async def clear_room_from_user_messages(self, guild: discord.Guild) -> None:
-        ...
-
     ############################ Commands ###############################
 
-    @commands.message_command(name="Add From History")
-    @Checks.is_history_thread()
+    @commands.message_command(name="add from history")
+    @Checks.is_thread(ThreadType.HISTORY)
     @Checks.permissions_for_play()
-    @Checks.is_connected(False)
-    async def add_track_from_history(self, ctx: discord.ApplicationContext, message: discord.Message) -> None:
+    @Checks.is_connected(same_voice=False)
+    async def add_track_from_history(
+        self, ctx: discord.ApplicationContext, message: discord.Message
+    ) -> None:
         await ctx.defer(ephemeral=True, invisible=False)
         embed = message.embeds[0]
         new_ctx = await self.client.get_context(message)
@@ -51,11 +53,19 @@ class MusicThreadCog(CogABC):
                     search_platform = SearchPlatform.get_key(match.group(0))
                     break
         setattr(new_ctx, "search_platform", search_platform)
-        await self.invoke_command(new_ctx, "play", query=f"{embed.title} {embed.author.name if embed.author else ''}")
-        await ctx.respond(content="Track is added from history", ephemeral=True, delete_after=5)
+        await self.invoke_command(
+            new_ctx,
+            "play",
+            query=f"{embed.title} {embed.author.name if embed.author else ''}",
+        )
+        await ctx.respond(
+            content="Track is added from history", ephemeral=True, delete_after=5
+        )
 
     @add_track_from_history.error
-    async def add_track_from_history_error(self, ctx: discord.ApplicationContext, error: commands.CommandError) -> None:
+    async def add_track_from_history_error(
+        self, ctx: discord.ApplicationContext, error: commands.CommandError
+    ) -> None:
         if isinstance(error, WrongTextChannelError):
             await ctx.respond(content=error.args[0], ephemeral=True, delete_after=5)
         elif isinstance(error, NotInVoiceError):
@@ -64,6 +74,16 @@ class MusicThreadCog(CogABC):
             message = f"Bot is missing {' and '.join(error.missing_permissions)} permissions to join the voice channel"
             await ctx.respond(content=message, ephemeral=True, delete_after=5)
 
+    @commands.message_command(name="remove from queue")
+    @Checks.is_thread(ThreadType.QUEUE)
+    @Checks.is_connected(same_voice=True)
+    async def remove_track_from_queue(self, ctx: discord.ApplicationContext, message: discord.Message) -> None:
+        await ctx.defer(ephemeral=True, invisible=False)
+        player = ctx.guild.voice_client
+        if isinstance(player, MusicPlayer):
+            await player.stop_player()
+        await ctx.respond(content="Track is removed from queue", ephemeral=True, delete_after=5)
+    
     ############################# Listeners #############################
 
     @commands.Cog.listener("on_message")
@@ -78,24 +98,32 @@ class MusicThreadCog(CogABC):
                         logger.error("Deleting messages error")
 
     @commands.Cog.listener("on_ready")
-    async def clear_threads_on_ready(self):
+    async def clear_threads_on_ready(self) -> None:
         for guild in self.client.guilds:
             try:
-                handler = QueueThreadHandler(Utils.get_thread(guild, ThreadType.QUEUE)) # type: ignore
-                await handler.thread.purge(limit=None)
+                handler: QueueThreadHandler | SettingsThreadHandler | HistoryThreadHandler | None
+                
+                if handler := QueueThreadHandler.from_guild(guild):
+                    await handler.thread.purge(limit=None)
 
-                handler = SettingsThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS)) # type: ignore
-                await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
+                if handler := SettingsThreadHandler.from_guild(guild):
+                    await handler.thread.purge(
+                        limit=None, check=lambda m: m.author != self.client.user
+                    )
 
-                handler = HistoryThreadHandler(Utils.get_thread(guild, ThreadType.SETTINGS)) # type: ignore
-                await handler.thread.purge(limit=None, check=lambda m: m.author != self.client.user)
+                if handler := HistoryThreadHandler.from_guild(guild):
+                    await handler.thread.purge(
+                        limit=None, check=lambda m: m.author != self.client.user
+                    )
             except Exception as e:
                 logger.error(f"{e}")
             finally:
                 await self.clear_thread_from_reactions(guild)
 
     @commands.Cog.listener("on_raw_reaction_add")
-    async def clear_reactions_on_reaction_add(self, raw_reaction: discord.RawReactionActionEvent):
+    async def clear_reactions_on_reaction_add(
+        self, raw_reaction: discord.RawReactionActionEvent
+    ):
         if not raw_reaction.member:
             return
 
@@ -104,7 +132,9 @@ class MusicThreadCog(CogABC):
             return
 
         if thread.parent == Utils.get_music_room(thread.guild):
-            message: discord.Message = await thread.fetch_message(raw_reaction.message_id)
+            message: discord.Message = await thread.fetch_message(
+                raw_reaction.message_id
+            )
             await message.clear_reactions()
 
 

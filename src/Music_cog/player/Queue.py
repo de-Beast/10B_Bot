@@ -15,11 +15,6 @@ from Music_cog.room.Handlers import (
 
 from .Track import Track
 
-# TODO: Отображение очереди должно быть вместе с играющим треком. Играющий трек должен быть просто явно отмечен.
-# Так не придется постоянно удалять треки из отображаемой очереди
-# Можно будет сделать более менее оптимизированную перемотку назад,
-# которая будет включать предыдущий трек, если очередь зациклена
-
 
 class SimpleQueue(deque):
     class State(Enum):
@@ -63,6 +58,11 @@ class SimpleQueue(deque):
     async def add_track(self, track: Track):
         self.append(track)
 
+    async def remove_track(self, track: Track | None = None):
+        if track is None:
+            track = self._current()
+        self.remove(track)
+
     def clear(self) -> None:
         super().clear()
         self.current_index = 0
@@ -86,16 +86,19 @@ class SimpleQueue(deque):
                     self._change_index(1)
             case Loop.LOOP:
                 self._change_index(1)
-        return self.current()
+        return self._current(start=True)
 
     def prev(self) -> Track | None:
         self._change_index(-1)
-        return self.current()
+        return self._current(start=True)
 
     def current(self) -> Track | None:
+        return self._current(start=True)
+
+    def _current(self, *, start: bool = False) -> Track | None:
         if len(self) == 0:
             return None
-        if self.state is not SimpleQueue.State.RUNNING:
+        if self.state is not SimpleQueue.State.RUNNING and start:
             self.state = SimpleQueue.State.RUNNING
         return self[self.current_index]
 
@@ -147,7 +150,7 @@ class Queue(SimpleQueue):
                 SimpleQueue.current_index.fset(self, value)  # type: ignore
             case Shuffle.SHUFFLE:
                 self.__shuffled_queue.current_index = value
-                current = self.current()
+                current = self._current()
                 SimpleQueue.current_index.fset(  # type: ignore
                     self, self.index(current) if current else 0
                 )
@@ -167,7 +170,9 @@ class Queue(SimpleQueue):
     def _queue_handler(self) -> QueueThreadHandler | None:
         if not self.__queue_handler:
             self.__queue_handler = QueueThreadHandler.from_guild(self.guild)
-        if not self.__queue_handler or not QueueThreadHandler.check(self.__queue_handler):
+        if not self.__queue_handler or not QueueThreadHandler.check(
+            self.__queue_handler
+        ):
             return None
 
         return self.__queue_handler
@@ -201,9 +206,11 @@ class Queue(SimpleQueue):
     def next(self, *, force=False) -> Track | None:
         next = super().next(force=force)
         if next is None:
-            self.client.loop.create_task(self._update_current_track_in_thread(prev_index=self.current_index))
+            self.client.loop.create_task(
+                self._update_current_track_in_thread(prev_index=self.current_index)
+            )
         return next
-    
+
     async def set_shuffle(self, shuffle_type: Shuffle):
         if isinstance(shuffle_type, Shuffle):
             match shuffle_type:
@@ -236,7 +243,7 @@ class Queue(SimpleQueue):
                 self.__shuffled_queue if self.shuffle is Shuffle.SHUFFLE else self
             ):
                 await handler.send_track_message(
-                    track, index, is_playing=track == self.current()
+                    track, index, is_playing=track == self._current()
                 )
 
     def _setup_shuffled_queue(self):
@@ -244,9 +251,9 @@ class Queue(SimpleQueue):
         self.__shuffled_queue.extend(self)
         shuffle = self.shuffle
         self.__shuffle = Shuffle.NOSHUFFLE
-        self.__shuffled_queue.remove(self.current())
+        self.__shuffled_queue.remove(self._current())
         random.shuffle(self.__shuffled_queue)
-        self.__shuffled_queue.appendleft(self.current())
+        self.__shuffled_queue.appendleft(self._current())
         self.__shuffle = shuffle
 
     async def clear(self):
@@ -263,7 +270,7 @@ class Queue(SimpleQueue):
             await self.__shuffled_queue.add_track(track)
         if queue_handler := self._queue_handler:
             await queue_handler.send_track_message(
-                track, len(self) - 1, is_playing=track == self[self.current_index]
+                track, len(self) - 1, is_playing=track == self._current()
             )
         if history_handler := self._history_handler:
             await history_handler.store_track_in_history(track)
@@ -274,3 +281,15 @@ class Queue(SimpleQueue):
                 await queue_handler.update_track_color(self.current_index)
             if prev_index is not None:
                 await queue_handler.update_track_color(prev_index, is_playing=False)
+
+    async def remove_track(self, track: Track | None = None):
+        if track is None:
+            track = self._current()
+        await super().remove_track(track)
+        if self.__shuffle is Shuffle.SHUFFLE:
+            await self.__shuffled_queue.remove_track(track)
+        if queue_handler := self._queue_handler:
+            await queue_handler.remove_track_message(track)
+    
+    async def remove_track_by_message_id(self, message_id: int):
+        await self.remove_track(await self._queue_handler.get_track_by_message_id(message_id))

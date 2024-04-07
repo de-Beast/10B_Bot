@@ -7,11 +7,13 @@ from Exceptions import NotInVoiceError, WrongTextChannelError, WrongVoiceError
 from Music_cog import Utils
 
 
-def is_connected(user_bot_same_voice: bool = True):
-    async def predicate(ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
+def is_connected(*, same_voice: bool = True):
+    async def predicate(
+        ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext,
+    ) -> bool:
         if isinstance(ctx.author, User):
             return False
-        
+
         if not (condition := isinstance(ctx.author.voice, VoiceState)):
             raise NotInVoiceError("You are not in voice channel")
 
@@ -22,7 +24,7 @@ def is_connected(user_bot_same_voice: bool = True):
                 and ctx.author.voice.channel == ctx.voice_client.channel
                 or ctx.voice_client is None
             )
-            or not user_bot_same_voice
+            or not same_voice
         )
         if not condition:
             raise WrongVoiceError("You are not in the same voice channel as Bot")
@@ -45,9 +47,11 @@ def permissions_for_play():
     return commands.check(predicate)  # type: ignore
 
 
-def is_history_thread():
-    async def predicate(ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext) -> bool:
-        condition = ctx.channel == Utils.get_thread(ctx.guild, ThreadType.HISTORY)
+def is_thread(thread_type: ThreadType):
+    async def predicate(
+        ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext,
+    ) -> bool:
+        condition = ctx.channel == Utils.get_thread(ctx.guild, thread_type)
         if not condition:
             raise WrongTextChannelError("Called not from History thread")
         return condition

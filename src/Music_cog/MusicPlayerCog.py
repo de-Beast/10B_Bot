@@ -30,7 +30,7 @@ class MusicPlayerCog(CogABC):
         enabled=False,
     )
     @Checks.permissions_for_play()
-    @Checks.is_connected(user_bot_same_voice=False)
+    @Checks.is_connected(same_voice=False)
     @commands.cooldown(1, 5, commands.BucketType.default)
     @discord.option("query", str, description="Query to search")
     # async def play(self, ctx: bridge.BridgeExtContext | bridge.BridgeApplicationContext, *, query: str):
