@@ -1,0 +1,22 @@
+services:
+  bot:
+    build: .
+    restart: always
+
+  db:
+    image: "mongo:latest"
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: deBeast
+      MONGO_INITDB_ROOT_PASSWORD: vSt4AuTqaGWpSs9B
+    volumes:
+        - mongo-data:/data/db
+        - mongo-config:/data/configdb
+
+volumes:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
