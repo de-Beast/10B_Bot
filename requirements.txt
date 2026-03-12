@@ -22,7 +22,7 @@ multidict==6.0.5
 mutagen==1.47.0
 mypy==1.9.0
 mypy-extensions==1.0.0
-orjson==3.9.15
+orjson==3.11.6
 py-cord==2.5.0
 pycares==4.4.0
 pycparser==2.21
